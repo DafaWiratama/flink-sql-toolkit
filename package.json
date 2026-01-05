@@ -1,0 +1,238 @@
+{
+  "name": "flink-sql-toolkit",
+  "displayName": "Flink SQL Toolkit",
+  "publisher": "Wiratama",
+  "description": "Interactive Apache Flink SQL development environment for VS Code. Write and execute Flink SQL queries in notebooks, explore cluster metadata (catalogs, databases, tables), monitor running jobs and cluster status, and manage your Flink cluster—all within your editor.",
+  "icon": "icon-color.png",
+  "version": "0.0.2",
+  "engines": {
+    "vscode": "^1.102.3"
+  },
+  "categories": [
+    "Data Science",
+    "Notebooks",
+    "Programming Languages"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DafaWiratama/flink-sql-toolkit"
+  },
+  "license": "MIT",
+  "contributes": {
+    "configuration": {
+      "title": "Flink",
+      "properties": {
+        "flink.gatewayUrl": {
+          "type": "string",
+          "default": "http://localhost:8083",
+          "description": "URL of the Flink SQL Gateway"
+        },
+        "flink.jobManagerUrl": {
+          "type": "string",
+          "default": "http://localhost:8081",
+          "description": "URL of the Flink JobManager (dashboard)"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "flink-explorer",
+          "title": "Flink",
+          "icon": "icon.png"
+        }
+      ]
+    },
+    "views": {
+      "flink-explorer": [
+        {
+          "id": "flinkExplorer",
+          "name": "Explorer",
+          "icon": "$(list-tree)",
+          "contextualTitle": "Flink Explorer"
+        },
+        {
+          "id": "flinkRunningJobs",
+          "name": "Running Jobs",
+          "icon": "$(play-circle)",
+          "contextualTitle": "Flink Running Jobs"
+        },
+        {
+          "id": "flinkJobHistory",
+          "name": "Job History",
+          "icon": "$(history)",
+          "contextualTitle": "Flink Job History"
+        },
+        {
+          "id": "flinkTaskManagers",
+          "name": "System Status",
+          "type": "webview",
+          "icon": "$(server)",
+          "contextualTitle": "Flink Task Managers"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "flinkRunningJobs.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "flinkJobHistory.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "flinkExplorer.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "flinkExplorer.selectDatabase",
+        "title": "Select Database",
+        "icon": "$(database)"
+      },
+      {
+        "command": "flinkTaskManagers.refresh",
+        "title": "Refresh Task Managers",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "flinkJobs.cancel",
+        "title": "Stop Job",
+        "icon": "$(stop)"
+      },
+      {
+        "command": "flink.showJobDetail",
+        "title": "Show Job Details",
+        "icon": "$(info)"
+      },
+      {
+        "command": "flink.configureConnection",
+        "title": "Configure Connection",
+        "icon": "$(settings)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "flinkRunningJobs.refresh",
+          "when": "view == flinkRunningJobs",
+          "group": "navigation"
+        },
+        {
+          "command": "flinkJobHistory.refresh",
+          "when": "view == flinkJobHistory",
+          "group": "navigation"
+        },
+        {
+          "command": "flinkExplorer.refresh",
+          "when": "view == flinkExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "flink.configureConnection",
+          "when": "view == flinkExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "flinkTaskManagers.refresh",
+          "when": "view == flinkTaskManagers",
+          "group": "navigation"
+        },
+        {
+          "command": "flink.configureConnection",
+          "when": "view == flinkTaskManagers",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "flinkJobs.cancel",
+          "when": "view == flinkRunningJobs && viewItem == flink-job-running",
+          "group": "inline"
+        },
+        {
+          "command": "flinkExplorer.selectDatabase",
+          "when": "view == flinkExplorer && viewItem == catalog",
+          "group": "inline"
+        }
+      ],
+      "view/item/inline": [
+        {
+          "command": "flinkJobs.cancel",
+          "when": "view == flinkRunningJobs && viewItem == flink-job-running",
+          "group": "inline"
+        }
+      ]
+    },
+    "notebooks": [
+      {
+        "type": "flink-sql-notebook",
+        "displayName": "Flink SQL Notebook",
+        "selector": [
+          {
+            "filenamePattern": "*.flinksql"
+          }
+        ]
+      }
+    ],
+    "notebookRenderer": [
+      {
+        "id": "flink-sql-renderer",
+        "displayName": "Flink SQL Renderer",
+        "entrypoint": "./dist/renderer.js",
+        "mimeTypes": [
+          "application/x-flink-table"
+        ]
+      }
+    ],
+    "languages": [
+      {
+        "id": "apache-flink",
+        "aliases": [
+          "Apache Flink",
+          "flink"
+        ],
+        "extensions": [
+          ".flinksql"
+        ]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "apache-flink",
+        "scopeName": "source.flink",
+        "path": "./syntaxes/flink.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.102.3",
+    "@types/vscode-notebook-renderer": "^1.72.4",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.39.1",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.48.1",
+    "webpack": "^5.103.0",
+    "webpack-cli": "^6.0.1"
+  }
+}
