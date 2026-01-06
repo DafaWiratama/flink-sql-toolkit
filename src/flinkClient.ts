@@ -140,6 +140,20 @@ export class FlinkGatewayClient {
         }
     }
 
+    async getClusterOverview(): Promise<any | null> {
+        try {
+            const response = await fetch(`${this.jobManagerUrl}/overview`);
+            if (!response.ok) {
+                console.warn('[Flink JobManager] Failed to fetch overview:', response.statusText);
+                return null;
+            }
+            return await response.json();
+        } catch (error: any) {
+            console.warn('[Flink JobManager] Error fetching overview:', error.message);
+            return null;
+        }
+    }
+
     async getJobs(): Promise<any[] | null> {
         try {
             const response = await fetch(`${this.jobManagerUrl}/jobs/overview`);
@@ -220,6 +234,13 @@ export class FlinkGatewayClient {
 
     // --- Metadata API (Compat Layer) ---
     // Uses SQL internally because REST Metadata endpoints are not available on all Gateway versions.
+
+    // --- Metadata API (Compat Layer) ---
+    // Uses SQL internally because REST Metadata endpoints are not available on all Gateway versions.
+
+    public async runQuery(sessionHandle: string, sql: string): Promise<any[]> {
+        return this.executeMetadataSql(sessionHandle, sql);
+    }
 
     private async executeMetadataSql(sessionHandle: string, sql: string): Promise<any[]> {
         const { statementHandle } = await this.executeStatement(sessionHandle, sql);

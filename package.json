@@ -48,6 +48,13 @@
           "title": "Flink",
           "icon": "icon.png"
         }
+      ],
+      "panel": [
+        {
+          "id": "flink-details",
+          "title": "Flink Details",
+          "icon": "$(info)"
+        }
       ]
     },
     "views": {
@@ -76,6 +83,15 @@
           "type": "webview",
           "icon": "$(server)",
           "contextualTitle": "Flink Task Managers"
+        }
+      ],
+      "flink-details": [
+        {
+          "id": "flinkObjectDetails",
+          "name": "Object Details",
+          "type": "webview",
+          "icon": "$(info)",
+          "contextualTitle": "Flink Object Details"
         }
       ]
     },

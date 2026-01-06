@@ -59,12 +59,12 @@ export class FlinkCatalogProvider implements vscode.TreeDataProvider<CatalogTree
             const selectedDB = this.context.workspaceState.get<string>(`flink-explorer.db.${catalog}`) || 'default_database';
 
             // Return Groups: Tables, Views
-            const tableGroup = new CatalogTreeItem('Tables', 'group-tables', vscode.TreeItemCollapsibleState.Collapsed, 'list-unordered');
+            const tableGroup = new CatalogTreeItem('Tables', 'group-tables', vscode.TreeItemCollapsibleState.Expanded, 'list-unordered');
             tableGroup.grandParentName = catalog;
             tableGroup.parentName = selectedDB;
             tableGroup.id = `grp-tbl-${catalog}-${selectedDB}`;
 
-            const viewGroup = new CatalogTreeItem('Views', 'group-views', vscode.TreeItemCollapsibleState.Collapsed, 'layers');
+            const viewGroup = new CatalogTreeItem('Views', 'group-views', vscode.TreeItemCollapsibleState.Expanded, 'layers');
             viewGroup.grandParentName = catalog;
             viewGroup.parentName = selectedDB;
             viewGroup.id = `grp-view-${catalog}-${selectedDB}`;
@@ -75,9 +75,8 @@ export class FlinkCatalogProvider implements vscode.TreeDataProvider<CatalogTree
             return this.listTablesFiltered(element.grandParentName!, element.parentName!);
         } else if (element.contextValue === 'group-views') {
             return this.listViewsOnly(element.grandParentName!, element.parentName!);
-        } else if (element.contextValue === 'table' || element.contextValue === 'view') {
-            return this.listColumns(element.grandParentName!, element.parentName!, element.label);
         }
+        return Promise.resolve([]);
         return Promise.resolve([]);
     }
 
@@ -113,7 +112,7 @@ export class FlinkCatalogProvider implements vscode.TreeDataProvider<CatalogTree
 
                 return catalogs.map((name: string) => {
                     const selectedDB = this.context.workspaceState.get<string>(`flink-explorer.db.${name}`) || 'default_database';
-                    const item = new CatalogTreeItem(name, 'catalog', vscode.TreeItemCollapsibleState.Collapsed, 'server-environment');
+                    const item = new CatalogTreeItem(name, 'catalog', vscode.TreeItemCollapsibleState.Expanded, 'server-environment');
                     item.description = `[${selectedDB}]`;
                     item.tooltip = `Active Database: ${selectedDB}`;
                     item.id = `cat-${name}`;
@@ -157,7 +156,7 @@ export class FlinkCatalogProvider implements vscode.TreeDataProvider<CatalogTree
                 const handle = await this.getSession();
                 const dbs = await this.client.listDatabases(handle, catalog);
                 return dbs.map((name: string) => {
-                    const item = new CatalogTreeItem(name, 'database', vscode.TreeItemCollapsibleState.Collapsed, 'database');
+                    const item = new CatalogTreeItem(name, 'database', vscode.TreeItemCollapsibleState.Expanded, 'database');
                     item.parentName = catalog;
                     item.id = `db-${catalog}-${name}`;
                     return item;
@@ -184,10 +183,15 @@ export class FlinkCatalogProvider implements vscode.TreeDataProvider<CatalogTree
                 const tablesOnly = allTables.filter(t => !viewSet.has(t));
 
                 return tablesOnly.map((name: string) => {
-                    const item = new CatalogTreeItem(name, 'table', vscode.TreeItemCollapsibleState.Collapsed, 'table');
+                    const item = new CatalogTreeItem(name, 'table', vscode.TreeItemCollapsibleState.None, 'table');
                     item.parentName = database;
                     item.grandParentName = catalog;
                     item.id = `tbl-${catalog}-${database}-${name}`;
+                    item.command = {
+                        command: 'flinkExplorer.selectObject',
+                        title: 'View Details',
+                        arguments: [catalog, database, name, 'table']
+                    };
                     return item;
                 });
             } catch (e: any) {
@@ -204,10 +208,15 @@ export class FlinkCatalogProvider implements vscode.TreeDataProvider<CatalogTree
                 const views = await this.client.listViews(handle, catalog, database);
 
                 return views.map((name: string) => {
-                    const item = new CatalogTreeItem(name, 'view', vscode.TreeItemCollapsibleState.Collapsed, 'eye'); // 'eye' icon for views
+                    const item = new CatalogTreeItem(name, 'view', vscode.TreeItemCollapsibleState.None, 'eye'); // 'eye' icon for views
                     item.parentName = database;
                     item.grandParentName = catalog;
                     item.id = `view-${catalog}-${database}-${name}`;
+                    item.command = {
+                        command: 'flinkExplorer.selectObject',
+                        title: 'View Details',
+                        arguments: [catalog, database, name, 'view']
+                    };
                     return item;
                 });
             } catch (e: any) {

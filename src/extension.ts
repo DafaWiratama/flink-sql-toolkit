@@ -11,6 +11,7 @@ import { SessionManager } from './sessionManager';
 import { FlinkCatalogProvider } from './catalogProvider';
 import { FlinkStatusBar } from './statusBar';
 import { FlinkSqlCompletionItemProvider } from './completionProvider';
+import { FlinkObjectDetailsProvider } from './objectDetailsProvider';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -86,12 +87,20 @@ export function activate(context: vscode.ExtensionContext) {
 	const catalogProvider = new FlinkCatalogProvider(context, gatewayUrl, jobManagerUrl, sessionManager);
 	vscode.window.registerTreeDataProvider('flinkExplorer', catalogProvider);
 
+	const objectDetailsProvider = new FlinkObjectDetailsProvider(client, sessionManager);
+	vscode.window.registerWebviewViewProvider('flinkObjectDetails', objectDetailsProvider);
+
 	const refreshExplorerCommand = vscode.commands.registerCommand('flinkExplorer.refresh', () => {
 		catalogProvider.refresh();
 	});
 
 	const selectDatabaseCommand = vscode.commands.registerCommand('flinkExplorer.selectDatabase', (item) => {
 		catalogProvider.selectDatabase(item);
+	});
+
+	const selectObjectCommand = vscode.commands.registerCommand('flinkExplorer.selectObject', async (catalog, database, object, type) => {
+		await vscode.commands.executeCommand('flinkObjectDetails.focus');
+		objectDetailsProvider.update(catalog, database, object, type);
 	});
 
 	// Register cancel command

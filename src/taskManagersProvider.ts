@@ -79,14 +79,15 @@ export class FlinkTaskManagersProvider implements vscode.WebviewViewProvider, vs
         }
 
         try {
+            const overview = await this.client.getClusterOverview();
             const tms = await this.client.getTaskManagers();
 
-            if (tms === null) {
+            if (overview === null || tms === null) {
                 this._view.webview.html = this.getErrorHtml('JobManager Offline');
                 return;
             }
 
-            const html = this.getHtmlForWebview(tms);
+            const html = this.getHtmlForWebview(overview, tms);
             this._view.webview.html = html;
         } catch (error: any) {
             Logger.error('Failed to fetch task managers:', error);
@@ -121,73 +122,64 @@ export class FlinkTaskManagersProvider implements vscode.WebviewViewProvider, vs
     }
 
     private formatBytes(bytes: number): string {
-        if (!bytes) {
-            return '0 B';
-        }
+        if (bytes === undefined || bytes === null) { return '-'; }
+        if (bytes === 0) { return '0 B'; }
         const k = 1024;
         const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    private formatRatio(free: number | undefined, total: number | undefined, isBytes: boolean = true): string {
-        if (free === undefined || total === undefined || total === 0) {
-            return '-';
-        }
-        const used = total - free;
-        const percent = Math.round((used / total) * 100);
+    private getHtmlForWebview(overview: any, tms: any[]): string {
+        const flinkVersion = overview['flink-version'] || 'Unknown';
+        const commitId = overview['flink-commit'] || '';
+        const slotsTotal = overview['slots-total'];
+        const slotsAvailable = overview['slots-available'];
+        const jobsRunning = overview['jobs-running'];
+        const jobsFinished = overview['jobs-finished'];
+        const jobsCancelled = overview['jobs-cancelled'];
+        const jobsFailed = overview['jobs-failed'];
 
-        // Return simple percentage for cleaner table
-        // Or "Free / Total"
-        const freeStr = isBytes ? this.formatBytes(free) : free.toString();
-        const totalStr = isBytes ? this.formatBytes(total) : total.toString();
+        // Card Generator
+        const card = (label: string, value: string | number, sub?: string) => `
+            <div class="card">
+                <div class="card-label">${label}</div>
+                <div class="card-value">${value}</div>
+                ${sub ? `<div class="card-sub">${sub}</div>` : ''}
+            </div>
+        `;
 
-        // Requested format: free / total
-        // Let's add percentage for clarity: "50% (512MB / 1GB)" or similar?
-        // User asked for "freeResource.cpuCores / totalResource.cpuCores"
-        return `${freeStr} / ${totalStr} <br><span class="sub">${percent}% Used</span>`;
-    }
-
-    private getHtmlForWebview(tms: any[]): string {
-        const uniqueIds = new Set<string>();
-        const cards = tms.filter(tm => {
-            if (!tm.id || uniqueIds.has(tm.id)) {
-                return false;
-            }
-            uniqueIds.add(tm.id);
-            return true;
-        }).map(tm => {
-            const heartbeat = tm.timeSinceLastHeartbeat
-                ? new Date(tm.timeSinceLastHeartbeat).toLocaleTimeString()
-                : '-';
-
+        // TM Generator
+        const tmCards = tms.map(tm => {
+            const shortId = tm.id.split('-')[0];
             const slots = `${tm.freeSlots} / ${tm.slotsNumber}`;
 
-            // Format: Free / Total (Percent)
-            const fmt = (free: number, total: number, isBytes: boolean) => {
-                if (total === 0 || total === undefined) {
-                    return '-';
-                }
-                const p = Math.round(((total - free) / total) * 100);
-                const f = isBytes ? this.formatBytes(free) : free;
-                const t = isBytes ? this.formatBytes(total) : total;
-                return `${f}/${t} (${p}%)`;
-            };
-
-            const row = (key: string, value: string) => `<tr><td class="k">${key}</td><td class="v">${value}</td></tr>`;
+            // Resources (CPU/Mem) could be added here as progress bars if needed
+            const cpu = tm.freeResource && tm.totalResource
+                ? `${tm.freeResource.cpuCores} / ${tm.totalResource.cpuCores}`
+                : '-';
+            const heap = tm.freeResource && tm.totalResource
+                ? this.formatBytes(tm.freeResource.taskHeapMemory) + ' / ' + this.formatBytes(tm.totalResource.taskHeapMemory)
+                : '-';
 
             return `
-            <div class="tm">
-                <table>
-                    ${row('Last HB', heartbeat)}
-                    ${row('Total Slots', tm.slotsNumber)}
-                    ${row('Free Slots', tm.freeSlots)}
-                    ${row('CPU', fmt(tm.freeResource?.cpuCores, tm.totalResource?.cpuCores, false))}
-                    ${row('Heap', fmt(tm.freeResource?.taskHeapMemory, tm.totalResource?.taskHeapMemory, true))}
-                    ${row('Off-Heap', fmt(tm.freeResource?.taskOffHeapMemory, tm.totalResource?.taskOffHeapMemory, true))}
-                    ${row('Managed', fmt(tm.freeResource?.managedMemory, tm.totalResource?.managedMemory, true))}
-                    ${row('Network', fmt(tm.freeResource?.networkMemory, tm.totalResource?.networkMemory, true))}
-                </table>
+            <div class="tm-card">
+                <div class="tm-header">
+                    <span class="tm-id" title="${tm.id}">${shortId}</span>
+                    <span class="tm-hb">${tm.timeSinceLastHeartbeat ? new Date(tm.timeSinceLastHeartbeat).toLocaleTimeString() : '-'}</span>
+                </div>
+                <div class="tm-row">
+                    <span class="tm-k">Slots</span>
+                    <span class="tm-v">${slots}</span>
+                </div>
+                 <div class="tm-row">
+                    <span class="tm-k">CPU</span>
+                    <span class="tm-v">${cpu}</span>
+                </div>
+                 <div class="tm-row">
+                    <span class="tm-k">Heap</span>
+                    <span class="tm-v">${heap}</span>
+                </div>
             </div>`;
         }).join('');
 
@@ -197,40 +189,100 @@ export class FlinkTaskManagersProvider implements vscode.WebviewViewProvider, vs
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+        :root {
+            --card-bg: var(--vscode-sideBar-background);
+            --border: var(--vscode-widget-border);
+            --fg: var(--vscode-editor-foreground);
+            --sub-fg: var(--vscode-descriptionForeground);
+            --accent: var(--vscode-textLink-foreground);
+        }
         body { 
             font-family: var(--vscode-editor-font-family); 
             font-size: var(--vscode-editor-font-size);
-            color: var(--vscode-editor-foreground); 
-            padding: 5px; 
+            color: var(--fg); 
+            padding: 10px; 
             background: transparent;
         }
-        .tm {
-            margin-bottom: 10px;
+        .header {
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 5px;
         }
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            border: 1px solid var(--vscode-widget-border);
+        .title { font-weight: bold; font-size: 1.1em; }
+        .subtitle { color: var(--sub-fg); font-size: 0.85em; margin-left: 5px; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
         }
-        td { 
-            padding: 4px; 
-            border: 1px solid var(--vscode-widget-border);
-            vertical-align: top;
+        .card {
+            background: var(--vscode-editor-background);
+            border: 1px solid var(--border);
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
         }
-        .k {
-            width: 40%;
+        .card-label { color: var(--sub-fg); font-size: 0.8em; margin-bottom: 2px; }
+        .card-value { font-weight: bold; font-size: 1.2em; }
+        .card-sub { font-size: 0.75em; color: var(--sub-fg); }
+
+        .section-title {
             font-weight: bold;
-            background-color: var(--vscode-sideBar-background);
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            color: var(--sub-fg);
         }
-        .v {
-            text-align: right;
-            font-family: monospace;
+
+        .tm-list { display: flex; flex-direction: column; gap: 8px; }
+        .tm-card {
+            background: var(--vscode-editor-background);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 8px;
         }
-        .no-data { padding: 20px; text-align: center; opacity: 0.7; }
+        .tm-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 0.9em;
+            font-weight: bold;
+            border-bottom: 1px dashed var(--border);
+            padding-bottom: 4px;
+        }
+        .tm-id { color: var(--accent); cursor: help; }
+        .tm-hb { color: var(--sub-fg); font-weight: normal; font-size: 0.8em; }
+        .tm-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85em;
+            margin-bottom: 2px;
+        }
+        .tm-k { color: var(--sub-fg); }
+        .tm-v { font-family: monospace; }
+        
+        .no-data { text-align: center; color: var(--sub-fg); margin-top: 20px; }
     </style>
 </head>
 <body>
-    ${cards.length > 0 ? cards : '<div class="no-data">No TaskManagers found.</div>'}
+    <div class="header">
+        <span class="title">Flink Cluster</span>
+        <span class="subtitle">v${flinkVersion} ${commitId ? `(${commitId.substring(0, 7)})` : ''}</span>
+    </div>
+
+    <div class="grid">
+        ${card('Task Managers', tms.length)}
+        ${card('Slots', slotsTotal)}
+        ${card('Jobs Running', jobsRunning)}
+        ${card('Jobs Finished', jobsFinished)}
+    </div>
+
+    <div class="section-title">Task Managers</div>
+    <div class="tm-list">
+        ${tmCards.length > 0 ? tmCards : '<div class="no-data">No TaskManagers connected</div>'}
+    </div>
 </body>
 </html>`;
     }
