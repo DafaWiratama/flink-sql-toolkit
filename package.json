@@ -195,11 +195,14 @@
         "id": "apache-flink",
         "aliases": [
           "Apache Flink",
-          "flink"
+          "flink",
+          "Flink SQL"
         ],
         "extensions": [
-          ".flinksql"
-        ]
+          ".flinksql",
+          ".fsql"
+        ],
+        "configuration": "./syntaxes/language-configuration.json"
       }
     ],
     "grammars": [

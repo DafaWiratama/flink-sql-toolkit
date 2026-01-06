@@ -1,0 +1,725 @@
+-- ============================================================================
+-- Apache Flink SQL Syntax Test File
+-- This file demonstrates the complete syntax highlighting for Flink SQL
+-- ============================================================================
+
+-- ===================
+-- DDL: CREATE TABLE
+-- ===================
+
+-- Basic table creation with connector properties
+CREATE TABLE orders (
+    order_id BIGINT,
+    customer_id INT,
+    product_name VARCHAR,
+    price DECIMAL(10, 2),
+    quantity INT,
+    order_time TIMESTAMP(3),
+    order_time_ltz TIMESTAMP_LTZ(3),
+    ts AS PROCTIME(),  -- computed column with PROCTIME
+    WATERMARK FOR order_time AS order_time - INTERVAL '5' SECOND,
+    PRIMARY KEY (order_id) NOT ENFORCED
+) WITH (
+    'connector' = 'kafka',
+    'topic' = 'orders',
+    'properties.bootstrap.servers' = 'localhost:9092',
+    'properties.group.id' = 'flink-consumer',
+    'format' = 'json',
+    'scan.startup.mode' = 'earliest-offset',
+    'json.ignore-parse-errors' = 'true'
+);
+
+-- Table with METADATA columns
+CREATE TABLE kafka_table (
+    id BIGINT,
+    name STRING,
+    event_time TIMESTAMP(3) METADATA FROM 'timestamp' VIRTUAL,
+    partition_id BIGINT METADATA FROM 'partition' VIRTUAL,
+    WATERMARK FOR event_time AS event_time - INTERVAL '10' SECOND
+) WITH (
+    'connector' = 'kafka',
+    'topic' = 'test-topic',
+    'format' = 'debezium-json'
+);
+
+-- Table with ROW and complex types
+CREATE TABLE nested_table (
+    id BIGINT,
+    info ROW<name STRING, age INT>,
+    tags ARRAY<STRING>,
+    properties MAP<STRING, STRING>,
+    metadata MULTISET<STRING>
+);
+
+-- Create table with partitions
+CREATE TABLE partitioned_orders (
+    order_id BIGINT,
+    dt STRING,
+    hr STRING
+) PARTITIONED BY (dt, hr) WITH (
+    'connector' = 'filesystem',
+    'path' = '/data/orders',
+    'format' = 'parquet'
+);
+
+-- Create temporary table
+CREATE TEMPORARY TABLE temp_table (
+    id INT,
+    value STRING
+) WITH (
+    'connector' = 'datagen'
+);
+
+-- ===================
+-- DDL: CREATE VIEW
+-- ===================
+
+CREATE VIEW order_summary AS
+SELECT
+    customer_id,
+    COUNT(*) AS order_count,
+    SUM(price * quantity) AS total_amount
+FROM orders
+GROUP BY customer_id;
+
+CREATE TEMPORARY VIEW daily_stats AS
+SELECT
+    DATE(order_time) AS order_date,
+    AVG(price) AS avg_price
+FROM orders
+GROUP BY DATE(order_time);
+
+-- ===================
+-- DDL: ALTER & DROP
+-- ===================
+
+ALTER TABLE orders SET ('sink.parallelism' = '4');
+ALTER TABLE orders RENAME TO orders_v2;
+ALTER TABLE orders ADD COLUMN status STRING;
+DROP TABLE IF EXISTS temp_table;
+DROP VIEW IF EXISTS order_summary;
+
+-- ===================
+-- DML: SELECT
+-- ===================
+
+-- Basic SELECT with all clauses
+SELECT
+    order_id,
+    customer_id,
+    product_name,
+    price,
+    quantity,
+    price * quantity AS total
+FROM orders
+WHERE price > 100.00 AND quantity >= 1
+ORDER BY order_time DESC
+LIMIT 100 OFFSET 10;
+
+-- SELECT with DISTINCT
+SELECT DISTINCT product_name FROM orders;
+SELECT ALL product_name FROM orders;
+
+-- CASE expression
+SELECT
+    order_id,
+    CASE
+        WHEN price > 1000 THEN 'high'
+        WHEN price > 100 THEN 'medium'
+        ELSE 'low'
+    END AS price_category
+FROM orders;
+
+-- ===================
+-- DML: JOIN Operations
+-- ===================
+
+-- INNER JOIN
+SELECT o.order_id, c.customer_name
+FROM orders o
+INNER JOIN customers c ON o.customer_id = c.id;
+
+-- LEFT/RIGHT/FULL OUTER JOIN
+SELECT o.*, c.customer_name
+FROM orders o
+LEFT OUTER JOIN customers c ON o.customer_id = c.id;
+
+SELECT o.*, c.customer_name
+FROM orders o
+RIGHT JOIN customers c ON o.customer_id = c.id;
+
+SELECT o.*, c.customer_name
+FROM orders o
+FULL OUTER JOIN customers c ON o.customer_id = c.id;
+
+-- CROSS JOIN
+SELECT * FROM orders CROSS JOIN customers;
+
+-- Temporal Join (FOR SYSTEM_TIME AS OF)
+SELECT o.*, p.product_price
+FROM orders o
+JOIN products FOR SYSTEM_TIME AS OF o.order_time AS p
+ON o.product_id = p.id;
+
+-- LATERAL JOIN with table function
+SELECT o.*, t.tag
+FROM orders o
+CROSS JOIN LATERAL UNNEST(o.tags) AS t(tag);
+
+-- ===================
+-- DML: INSERT
+-- ===================
+
+INSERT INTO target_table
+SELECT * FROM source_table;
+
+INSERT INTO orders (order_id, customer_id, price)
+VALUES (1, 100, 99.99), (2, 101, 149.99);
+
+INSERT OVERWRITE orders
+SELECT * FROM staging_orders;
+
+-- Statement set for multi-insert
+BEGIN STATEMENT SET;
+INSERT INTO sink1 SELECT * FROM source WHERE type = 'A';
+INSERT INTO sink2 SELECT * FROM source WHERE type = 'B';
+END;
+
+-- ===================
+-- DML: UPDATE & DELETE
+-- ===================
+
+UPDATE orders SET price = price * 1.1 WHERE quantity > 10;
+DELETE FROM orders WHERE order_time < TIMESTAMP '2024-01-01 00:00:00';
+
+-- ===================
+-- Window Functions
+-- ===================
+
+-- TUMBLE Window (TVF)
+SELECT
+    window_start,
+    window_end,
+    customer_id,
+    SUM(price) AS total
+FROM TABLE(
+    TUMBLE(TABLE orders, DESCRIPTOR(order_time), INTERVAL '1' HOUR)
+)
+GROUP BY window_start, window_end, customer_id;
+
+-- HOP Window (Sliding)
+SELECT
+    window_start,
+    window_end,
+    COUNT(*) AS cnt
+FROM TABLE(
+    HOP(TABLE orders, DESCRIPTOR(order_time), INTERVAL '5' MINUTE, INTERVAL '10' MINUTE)
+)
+GROUP BY window_start, window_end;
+
+-- SESSION Window
+SELECT
+    window_start,
+    window_end,
+    customer_id,
+    COUNT(*) AS session_orders
+FROM TABLE(
+    SESSION(TABLE orders, DESCRIPTOR(order_time), INTERVAL '30' MINUTE)
+)
+GROUP BY window_start, window_end, customer_id;
+
+-- CUMULATE Window
+SELECT
+    window_start,
+    window_end,
+    SUM(price) AS cumulative_total
+FROM TABLE(
+    CUMULATE(TABLE orders, DESCRIPTOR(order_time), INTERVAL '1' HOUR, INTERVAL '1' DAY)
+)
+GROUP BY window_start, window_end;
+
+-- OVER Window with ranking functions
+SELECT
+    order_id,
+    customer_id,
+    price,
+    ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_time) AS row_num,
+    RANK() OVER (PARTITION BY customer_id ORDER BY price DESC) AS price_rank,
+    DENSE_RANK() OVER (PARTITION BY customer_id ORDER BY price DESC) AS dense_price_rank,
+    LAG(price, 1, 0) OVER (PARTITION BY customer_id ORDER BY order_time) AS prev_price,
+    LEAD(price, 1, 0) OVER (PARTITION BY customer_id ORDER BY order_time) AS next_price,
+    FIRST_VALUE(price) OVER (PARTITION BY customer_id ORDER BY order_time) AS first_price,
+    LAST_VALUE(price) OVER (PARTITION BY customer_id ORDER BY order_time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS last_price
+FROM orders;
+
+-- ===================
+-- Aggregate Functions
+-- ===================
+
+SELECT
+    customer_id,
+    COUNT(*) AS total_orders,
+    COUNT(DISTINCT product_name) AS unique_products,
+    SUM(price) AS total_spent,
+    AVG(price) AS avg_price,
+    MIN(price) AS min_price,
+    MAX(price) AS max_price,
+    STDDEV(price) AS price_stddev,
+    VARIANCE(price) AS price_variance,
+    COLLECT(product_name) AS products,
+    LISTAGG(product_name, ', ') AS product_list,
+    APPROX_COUNT_DISTINCT(product_name) AS approx_distinct
+FROM orders
+GROUP BY customer_id
+HAVING COUNT(*) > 5;
+
+-- Grouping sets, ROLLUP, CUBE
+SELECT
+    customer_id,
+    product_name,
+    SUM(price) AS total
+FROM orders
+GROUP BY GROUPING SETS (
+    (customer_id, product_name),
+    (customer_id),
+    ()
+);
+
+SELECT customer_id, product_name, SUM(price)
+FROM orders
+GROUP BY ROLLUP (customer_id, product_name);
+
+SELECT customer_id, product_name, SUM(price)
+FROM orders
+GROUP BY CUBE (customer_id, product_name);
+
+-- ===================
+-- Set Operations
+-- ===================
+
+SELECT * FROM table1
+UNION ALL
+SELECT * FROM table2;
+
+SELECT * FROM table1
+UNION
+SELECT * FROM table2;
+
+SELECT * FROM table1
+INTERSECT
+SELECT * FROM table2;
+
+SELECT * FROM table1
+EXCEPT
+SELECT * FROM table2;
+
+-- ===================
+-- Subqueries
+-- ===================
+
+-- IN subquery
+SELECT * FROM orders
+WHERE customer_id IN (SELECT id FROM vip_customers);
+
+-- NOT IN subquery
+SELECT * FROM orders
+WHERE product_id NOT IN (SELECT id FROM discontinued_products);
+
+-- EXISTS subquery
+SELECT * FROM customers c
+WHERE EXISTS (
+    SELECT 1 FROM orders o WHERE o.customer_id = c.id
+);
+
+-- NOT EXISTS subquery
+SELECT * FROM customers c
+WHERE NOT EXISTS (
+    SELECT 1 FROM orders o WHERE o.customer_id = c.id
+);
+
+-- Scalar subquery
+SELECT
+    order_id,
+    (SELECT MAX(price) FROM orders) AS max_price
+FROM orders;
+
+-- ===================
+-- Built-in Functions
+-- ===================
+
+-- String functions
+SELECT
+    UPPER(name),
+    LOWER(name),
+    TRIM(BOTH ' ' FROM name),
+    CONCAT(first_name, ' ', last_name),
+    CONCAT_WS('-', a, b, c),
+    SUBSTRING(name, 1, 10),
+    REPLACE(name, 'old', 'new'),
+    REGEXP_REPLACE(name, '[0-9]', ''),
+    CHAR_LENGTH(name),
+    POSITION('x' IN name),
+    LPAD(id, 10, '0'),
+    RPAD(id, 10, '0'),
+    REVERSE(name),
+    INITCAP(name),
+    MD5(name),
+    SHA256(name),
+    FROM_BASE64(encoded),
+    TO_BASE64(data),
+    PARSE_URL(url, 'HOST'),
+    JSON_VALUE(json_col, '$.name'),
+    JSON_QUERY(json_col, '$.items'),
+    UUID()
+FROM users;
+
+-- Math functions
+SELECT
+    ABS(-10),
+    CEIL(3.14),
+    FLOOR(3.14),
+    ROUND(3.14159, 2),
+    TRUNCATE(3.14159, 2),
+    POWER(2, 10),
+    SQRT(16),
+    EXP(1),
+    LN(2.718),
+    LOG10(100),
+    LOG2(8),
+    MOD(10, 3),
+    SIN(0),
+    COS(0),
+    TAN(0),
+    DEGREES(3.14159),
+    RADIANS(180),
+    RAND(),
+    RAND_INTEGER(100),
+    BIN(10),
+    HEX(255),
+    PI(),
+    SIGN(-5)
+FROM dual;
+
+-- Date/Time functions
+SELECT
+    CURRENT_DATE,
+    CURRENT_TIME,
+    CURRENT_TIMESTAMP,
+    LOCALTIMESTAMP,
+    NOW(),
+    DATE '2024-01-15',
+    TIME '10:30:00',
+    TIMESTAMP '2024-01-15 10:30:00',
+    TO_DATE('2024-01-15', 'yyyy-MM-dd'),
+    TO_TIMESTAMP('2024-01-15 10:30:00', 'yyyy-MM-dd HH:mm:ss'),
+    DATE_FORMAT(order_time, 'yyyy-MM-dd'),
+    EXTRACT(YEAR FROM order_time),
+    EXTRACT(MONTH FROM order_time),
+    EXTRACT(DAY FROM order_time),
+    YEAR(order_time),
+    MONTH(order_time),
+    DAYOFWEEK(order_time),
+    HOUR(order_time),
+    TIMESTAMPADD(DAY, 7, order_time),
+    TIMESTAMPDIFF(DAY, start_time, end_time),
+    DATEDIFF(end_date, start_date),
+    FROM_UNIXTIME(unix_ts),
+    UNIX_TIMESTAMP(ts),
+    CONVERT_TZ(ts, 'UTC', 'America/New_York')
+FROM events;
+
+-- Type conversion
+SELECT
+    CAST(price AS STRING),
+    CAST('100' AS INT),
+    TRY_CAST('invalid' AS INT),
+    TYPEOF(price)
+FROM orders;
+
+-- Conditional functions
+SELECT
+    COALESCE(nullable_col, 'default'),
+    NULLIF(a, b),
+    IF(condition, true_value, false_value),
+    IFNULL(nullable_col, 'default'),
+    GREATEST(a, b, c),
+    LEAST(a, b, c)
+FROM data;
+
+-- Collection functions
+SELECT
+    CARDINALITY(array_col),
+    ELEMENT(array_col),
+    array_col[1],
+    MAP_KEYS(map_col),
+    MAP_VALUES(map_col),
+    MAP_ENTRIES(map_col),
+    ARRAY_CONTAINS(array_col, 'value'),
+    ARRAY_DISTINCT(array_col),
+    ARRAY_UNION(arr1, arr2),
+    ARRAY_CONCAT(arr1, arr2)
+FROM collections;
+
+-- ===================
+-- MATCH_RECOGNIZE (CEP)
+-- ===================
+
+SELECT *
+FROM orders
+MATCH_RECOGNIZE (
+    PARTITION BY customer_id
+    ORDER BY order_time
+    MEASURES
+        FIRST(A.order_time) AS start_time,
+        LAST(B.order_time) AS end_time,
+        AVG(A.price) AS avg_price
+    ONE ROW PER MATCH
+    AFTER MATCH SKIP PAST LAST ROW
+    PATTERN (A+ B)
+    DEFINE
+        A AS A.price < 100,
+        B AS B.price >= 100
+);
+
+-- ===================
+-- Hints
+-- ===================
+
+-- Table hints
+SELECT /*+ OPTIONS('scan.startup.mode'='latest-offset') */ *
+FROM orders;
+
+-- Join hints
+SELECT /*+ BROADCAST(small_table) */ *
+FROM large_table
+JOIN small_table ON large_table.id = small_table.id;
+
+SELECT /*+ SHUFFLE_HASH(orders) */ *
+FROM orders
+JOIN customers ON orders.customer_id = customers.id;
+
+-- State TTL hint
+SELECT /*+ STATE_TTL('orders' = '1h', 'customers' = '2h') */ *
+FROM orders
+JOIN customers ON orders.customer_id = customers.id;
+
+-- Lookup join hint
+SELECT /*+ LOOKUP('table'='dim_table', 'async'='true', 'timeout'='30s') */ *
+FROM fact_table
+JOIN dim_table FOR SYSTEM_TIME AS OF fact_table.proc_time
+ON fact_table.dim_id = dim_table.id;
+
+-- ===================
+-- Administrative Commands
+-- ===================
+
+-- SHOW commands
+SHOW CATALOGS;
+SHOW CURRENT CATALOG;
+SHOW DATABASES;
+SHOW CURRENT DATABASE;
+SHOW TABLES;
+SHOW VIEWS;
+SHOW FUNCTIONS;
+SHOW MODULES;
+SHOW JARS;
+SHOW JOBS;
+SHOW CREATE TABLE orders;
+SHOW COLUMNS FROM orders;
+
+-- DESCRIBE
+DESCRIBE orders;
+DESC orders;
+
+-- EXPLAIN
+EXPLAIN SELECT * FROM orders;
+EXPLAIN PLAN FOR SELECT * FROM orders;
+EXPLAIN ESTIMATED_COST SELECT * FROM orders;
+EXPLAIN CHANGELOG_MODE SELECT * FROM orders;
+EXPLAIN JSON_EXECUTION_PLAN SELECT * FROM orders;
+
+-- USE
+USE CATALOG my_catalog;
+USE my_database;
+
+-- SET/RESET
+SET 'execution.checkpointing.interval' = '10s';
+SET 'table.exec.state.ttl' = '1h';
+RESET 'execution.checkpointing.interval';
+
+-- Module management
+LOAD MODULE hive;
+UNLOAD MODULE hive;
+
+-- JAR management
+ADD JAR '/path/to/my-udf.jar';
+REMOVE JAR '/path/to/my-udf.jar';
+
+-- Job control
+STOP JOB 'job-id' WITH SAVEPOINT;
+STOP JOB 'job-id' WITH DRAIN;
+
+-- ===================
+-- Constants & Literals
+-- ===================
+
+SELECT
+    TRUE,
+    FALSE,
+    NULL,
+    UNKNOWN,
+    123,
+    123.456,
+    1.23E10,
+    0xFF,
+    X'48454C4C4F',
+    'string literal',
+    "double quoted",
+    `backtick identifier`
+FROM dual;
+
+-- Interval literals
+SELECT
+    INTERVAL '1' YEAR,
+    INTERVAL '2' MONTH,
+    INTERVAL '3' DAY,
+    INTERVAL '4' HOUR,
+    INTERVAL '5' MINUTE,
+    INTERVAL '6' SECOND,
+    INTERVAL '1-2' YEAR TO MONTH,
+    INTERVAL '1 02:03:04' DAY TO SECOND
+FROM dual;
+
+-- ===================
+-- Operators
+-- ===================
+
+SELECT
+    a + b,
+    a - b,
+    a * b,
+    a / b,
+    a % b,
+    a || b,  -- string concatenation
+    a = b,
+    a <> b,
+    a != b,
+    a < b,
+    a > b,
+    a <= b,
+    a >= b,
+    a AND b,
+    a OR b,
+    NOT a,
+    a IS NULL,
+    a IS NOT NULL,
+    a BETWEEN 1 AND 10,
+    a IN (1, 2, 3),
+    a LIKE 'pattern%',
+    a SIMILAR TO 'regex'
+FROM data;
+
+-- ===================
+-- Common Connector Examples
+-- ===================
+
+-- Kafka source with Avro
+CREATE TABLE kafka_avro_source (
+    id BIGINT,
+    name STRING
+) WITH (
+    'connector' = 'kafka',
+    'topic' = 'my-topic',
+    'properties.bootstrap.servers' = 'kafka:9092',
+    'format' = 'avro-confluent',
+    'avro-confluent.url' = 'http://schema-registry:8081'
+);
+
+-- JDBC sink
+CREATE TABLE jdbc_sink (
+    id BIGINT,
+    name STRING,
+    PRIMARY KEY (id) NOT ENFORCED
+) WITH (
+    'connector' = 'jdbc',
+    'url' = 'jdbc:mysql://localhost:3306/mydb',
+    'table-name' = 'users',
+    'username' = 'root',
+    'password' = 'password',
+    'sink.buffer-flush.max-rows' = '1000',
+    'sink.buffer-flush.interval' = '10s'
+);
+
+-- Elasticsearch sink
+CREATE TABLE es_sink (
+    id STRING,
+    name STRING,
+    PRIMARY KEY (id) NOT ENFORCED
+) WITH (
+    'connector' = 'elasticsearch-7',
+    'hosts' = 'http://localhost:9200',
+    'index' = 'my-index'
+);
+
+-- Filesystem with Parquet
+CREATE TABLE fs_table (
+    id BIGINT,
+    name STRING,
+    dt STRING,
+    hr STRING
+) PARTITIONED BY (dt, hr) WITH (
+    'connector' = 'filesystem',
+    'path' = 's3://bucket/path',
+    'format' = 'parquet',
+    'parquet.compression' = 'SNAPPY',
+    'sink.rolling-policy.file-size' = '128MB',
+    'sink.rolling-policy.rollover-interval' = '30min'
+);
+
+-- Datagen for testing
+CREATE TABLE datagen_source (
+    id BIGINT,
+    name STRING,
+    amount DECIMAL(10,2)
+) WITH (
+    'connector' = 'datagen',
+    'rows-per-second' = '1000'
+);
+
+-- Print sink for debugging
+CREATE TABLE print_sink (
+    id BIGINT,
+    name STRING
+) WITH (
+    'connector' = 'print'
+);
+
+-- Blackhole sink for benchmarks
+CREATE TABLE blackhole_sink (
+    id BIGINT,
+    data STRING
+) WITH (
+    'connector' = 'blackhole'
+);
+
+-- CDC connector (MySQL)
+CREATE TABLE mysql_cdc_source (
+    id BIGINT,
+    name STRING,
+    PRIMARY KEY (id) NOT ENFORCED
+) WITH (
+    'connector' = 'mysql-cdc',
+    'hostname' = 'localhost',
+    'port' = '3306',
+    'username' = 'root',
+    'password' = 'password',
+    'database-name' = 'mydb',
+    'table-name' = 'users',
+    'server-id' = '5400-5404',
+    'server-time-zone' = 'UTC'
+);
+
+-- ===================
+-- End of Test File
+-- ===================
+

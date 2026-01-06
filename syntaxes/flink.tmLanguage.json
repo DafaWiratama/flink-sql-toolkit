@@ -1,38 +1,529 @@
 {
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Apache Flink SQL",
     "scopeName": "source.flink",
     "patterns": [
-        {
-            "match": "(?i)\\b(A|ABS|ABSOLUTE|ACTION|ADA|ADD|ADMIN|AFTER|ALL|ALLOCATE|ALLOW|ALTER|ALWAYS|AND|ANALYZE|ANY|ARE|ARRAY|AS|ASC|ASENSITIVE|ASSERTION|ASSIGNMENT|ASYMMETRIC|AT|ATOMIC|ATTRIBUTE|ATTRIBUTES|AUTHORIZATION|AVG|BEFORE|BEGIN|BERNOULLI|BETWEEN|BIGINT|BINARY|BIT|BLOB|BOOLEAN|BOTH|BREADTH|BY|BYTES|C|CALL|CALLED|CARDINALITY|CASCADE|CASCADED|CASE|CAST|CATALOG|CATALOG_NAME|CEIL|CEILING|CENTURY|CHAIN|CHAR|CHARACTER|CHARACTERISTICS|CHARACTERS|CHARACTER_LENGTH|CHARACTER_SET_CATALOG|CHARACTER_SET_NAME|CHARACTER_SET_SCHEMA|CHAR_LENGTH|CHECK|CLASS_ORIGIN|CLOB|CLOSE|COALESCE|COBOL|COLLATE|COLLATION|COLLATION_CATALOG|COLLATION_NAME|COLLATION_SCHEMA|COLLECT|COLUMN|COLUMNS|COLUMN_NAME|COMMAND_FUNCTION|COMMAND_FUNCTION_CODE|COMMIT|COMMITTED|CONDITION|CONDITION_NUMBER|CONNECT|CONNECTION|CONNECTION_NAME|CONSTRAINT|CONSTRAINTS|CONSTRAINT_CATALOG|CONSTRAINT_NAME|CONSTRAINT_SCHEMA|CONSTRUCTOR|CONTAINS|CONTINUE|CONVERT|CORR|CORRESPONDING|COUNT|COVAR_POP|COVAR_SAMP|CREATE|CROSS|CUBE|CUME_DIST|CURRENT|CURRENT_CATALOG|CURRENT_DATE|CURRENT_DEFAULT_TRANSFORM_GROUP|CURRENT_PATH|CURRENT_ROLE|CURRENT_SCHEMA|CURRENT_TIME|CURRENT_TIMESTAMP|CURRENT_TRANSFORM_GROUP_FOR_TYPE|CURRENT_USER|CURSOR|CURSOR_NAME|CYCLE|DATA|DATABASE|DATE|DATETIME_INTERVAL_CODE|DATETIME_INTERVAL_PRECISION|DAY|DEALLOCATE|DEC|DECADE|DECIMAL|DECLARE|DEFAULT|DEFAULTS|DEFERRABLE|DEFERRED|DEFINED|DEFINER|DEGREE|DELETE|DENSE_RANK|DEPTH|DEREF|DERIVED|DESC|DESCRIBE|DESCRIPTION|DESCRIPTOR|DETERMINISTIC|DIAGNOSTICS|DISALLOW|DISCONNECT|DISPATCH|DISTINCT|DOMAIN|DOUBLE|DOW|DOY|DROP|DYNAMIC|DYNAMIC_FUNCTION|DYNAMIC_FUNCTION_CODE|EACH|ELEMENT|ELSE|END|END-EXEC|EPOCH|EQUALS|ESCAPE|EVERY|EXCEPT|EXCEPTION|EXCLUDE|EXCLUDING|EXEC|EXECUTE|EXISTS|EXP|EXPLAIN|EXTEND|EXTERNAL|EXTRACT|FALSE|FETCH|FILTER|FINAL|FIRST|FIRST_VALUE|FLOAT|FLOOR|FOLLOWING|FOR|FOREIGN|FORTRAN|FOUND|FRAC_SECOND|FREE|FROM|FULL|FUNCTION|FUSION|G|GENERAL|GENERATED|GET|GLOBAL|GO|GOTO|GRANT|GRANTED|GROUP|GROUPING|HAVING|HIERARCHY|HOLD|HOUR|IDENTITY|IMMEDIATE|IMPLEMENTATION|IMPORT|IN|INCLUDING|INCREMENT|INDICATOR|INITIALLY|INNER|INOUT|INPUT|INSENSITIVE|INSERT|INSTANCE|INSTANTIABLE|INT|INTEGER|INTERSECT|INTERSECTION|INTERVAL|INTO|INVOKER|IS|ISOLATION|JAVA|JOIN|K|KEY|KEY_MEMBER|KEY_TYPE|LABEL|LANGUAGE|LARGE|LAST|LAST_VALUE|LATERAL|LEADING|LEFT|LENGTH|LEVEL|LIBRARY|LIKE|LIMIT|LN|LOCAL|LOCALTIME|LOCALTIMESTAMP|LOCATOR|LOWER|M|MAP|MATCH|MATCHED|MAX|MAXVALUE|MEMBER|MERGE|MESSAGE_LENGTH|MESSAGE_OCTET_LENGTH|MESSAGE_TEXT|METHOD|MICROSECOND|MILLENNIUM|MIN|MINUTE|MINVALUE|MOD|MODIFIES|MODULE|MODULES|MONTH|MORE|MULTISET|MUMPS|NAME|NAMES|NATIONAL|NATURAL|NCHAR|NCLOB|NESTING|NEW|NEXT|NO|NONE|NORMALIZE|NORMALIZED|NOT|NULL|NULLABLE|NULLIF|NULLS|NUMBER|NUMERIC|OBJECT|OCTETS|OCTET_LENGTH|OF|OFFSET|OLD|ON|ONLY|OPEN|OPTION|OPTIONS|OR|ORDER|ORDERING|ORDINALITY|OTHERS|OUT|OUTER|OUTPUT|OVER|OVERLAPS|OVERLAY|OVERRIDING|PAD|PARAMETER|PARAMETER_MODE|PARAMETER_NAME|PARAMETER_ORDINAL_POSITION|PARAMETER_SPECIFIC_CATALOG|PARAMETER_SPECIFIC_NAME|PARAMETER_SPECIFIC_SCHEMA|PARTIAL|PARTITION|PASCAL|PASSTHROUGH|PATH|PERCENTILE_CONT|PERCENTILE_DISC|PERCENT_RANK|PLACING|PLAN|PLI|POSITION|POWER|PRECEDING|PRECISION|PREPARE|PRESERVE|PRIMARY|PRIOR|PRIVILEGES|PROCEDURE|PUBLIC|QUARTER|RANGE|RANK|RAW|READ|READS|REAL|RECURSIVE|REF|REFERENCES|REFERENCING|REGR_AVGX|REGR_AVGY|REGR_COUNT|REGR_INTERCEPT|REGR_R2|REGR_SLOPE|REGR_SXX|REGR_SXY|REGR_SYY|RELATIVE|RELEASE|REPEATABLE|RESET|RESTART|RESTRICT|RESULT|RETURN|RETURNED_CARDINALITY|RETURNED_LENGTH|RETURNED_OCTET_LENGTH|RETURNED_SQLSTATE|RETURNS|REVOKE|RIGHT|ROLE|ROLLBACK|ROLLUP|ROUTINE|ROUTINE_CATALOG|ROUTINE_NAME|ROUTINE_SCHEMA|ROW|ROWS|ROW_COUNT|ROW_NUMBER|SAVEPOINT|SCALE|SCHEMA|SCHEMA_NAME|SCOPE|SCOPE_CATALOGS|SCOPE_NAME|SCOPE_SCHEMA|SCROLL|SEARCH|SECOND|SECTION|SECURITY|SELECT|SELF|SENSITIVE|SEQUENCE|SERIALIZABLE|SERVER|SERVER_NAME|SESSION|SESSION_USER|SET|SETS|SIMILAR|SIMPLE|SIZE|SMALLINT|SOME|SOURCE|SPACE|SPECIFIC|SPECIFICTYPE|SPECIFIC_NAME|SQL|SQLEXCEPTION|SQLSTATE|SQLWARNING|SQL_TSI_DAY|SQL_TSI_FRAC_SECOND|SQL_TSI_HOUR|SQL_TSI_MICROSECOND|SQL_TSI_MINUTE|SQL_TSI_MONTH|SQL_TSI_QUARTER|SQL_TSI_SECOND|SQL_TSI_WEEK|SQL_TSI_YEAR|SQRT|START|STATE|STATEMENT|STATIC|STATISTICS|STDDEV_POP|STDDEV_SAMP|STREAM|STRING|STRUCTURE|STYLE|SUBCLASS_ORIGIN|SUBMULTISET|SUBSTITUTE|SUBSTRING|SUM|SYMMETRIC|SYSTEM|SYSTEM_USER|TABLE|TABLESAMPLE|TABLE_NAME|TEMPORARY|THEN|TIES|TIME|TIMESTAMP|TIMESTAMPADD|TIMESTAMPDIFF|TIMEZONE_HOUR|TIMEZONE_MINUTE|TINYINT|TO|TOP_LEVEL_COUNT|TRAILING|TRANSACTION|TRANSACTIONS_ACTIVE|TRANSACTIONS_COMMITTED|TRANSACTIONS_ROLLED_BACK|TRANSFORM|TRANSFORMS|TRANSLATE|TRANSLATION|TREAT|TRIGGER|TRIGGER_CATALOG|TRIGGER_NAME|TRIGGER_SCHEMA|TRIM|TRUE|TYPE|UESCAPE|UNBOUNDED|UNCOMMITTED|UNDER|UNION|UNIQUE|UNKNOWN|UNNAMED|UNNEST|UPDATE|UPPER|UPSERT|USAGE|USER|USER_DEFINED_TYPE_CATALOG|USER_DEFINED_TYPE_CODE|USER_DEFINED_TYPE_NAME|USER_DEFINED_TYPE_SCHEMA|USING|VALUE|VALUES|VARBINARY|VARCHAR|VARYING|VAR_POP|VAR_SAMP|VERSION|VIEW|WEEK|WHEN|WHENEVER|WHERE|WIDTH_BUCKET|WINDOW|WITH|WITHIN|WITHOUT|WORK|WRAPPER|WRITE|XML|YEAR|ZONE)\\b",
-            "name": "keyword.control.flink"
+        { "include": "#comments" },
+        { "include": "#hints" },
+        { "include": "#strings" },
+        { "include": "#numbers" },
+        { "include": "#operators" },
+        { "include": "#punctuation" },
+        { "include": "#constants" },
+        { "include": "#data-types" },
+        { "include": "#ddl-keywords" },
+        { "include": "#dml-keywords" },
+        { "include": "#clause-keywords" },
+        { "include": "#flink-specific-keywords" },
+        { "include": "#window-functions" },
+        { "include": "#aggregate-functions" },
+        { "include": "#builtin-functions" },
+        { "include": "#logical-operators" },
+        { "include": "#connector-properties" },
+        { "include": "#identifiers" }
+    ],
+    "repository": {
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.line.double-dash.flink",
+                    "match": "--.*$"
+                },
+                {
+                    "name": "comment.block.flink",
+                    "begin": "/\\*(?!\\+)",
+                    "end": "\\*/"
+                }
+            ]
         },
-        {
-            "match": "(?i)\\b(TRUE|FALSE|NULL)\\b",
-            "name": "constant.language.flink"
+        "hints": {
+            "patterns": [
+                {
+                    "name": "comment.block.hint.flink",
+                    "begin": "/\\*\\+",
+                    "end": "\\*/",
+                    "beginCaptures": {
+                        "0": { "name": "punctuation.definition.hint.begin.flink" }
+                    },
+                    "endCaptures": {
+                        "0": { "name": "punctuation.definition.hint.end.flink" }
+                    },
+                    "patterns": [
+                        {
+                            "name": "keyword.other.hint.flink",
+                            "match": "(?i)\\b(OPTIONS|BROADCAST|SHUFFLE_HASH|SHUFFLE_MERGE|NEST_LOOP|LOOKUP|STATE_TTL|MINI_BATCH|SPLIT_DISTINCT_AGG|AGG_STRATEGY|ASYNC_LOOKUP|RETRY_STRATEGY)\\b"
+                        },
+                        { "include": "#strings" }
+                    ]
+                }
+            ]
         },
-        {
-            "match": "(?i)\\b(BIGINT|BINARY|BIT|BLOB|BOOLEAN|CHAR|CHARACTER|CLOB|DATE|DEC|DECIMAL|DOUBLE|FLOAT|INT|INTEGER|INTERVAL|MAP|MULTISET|NCHAR|NCLOB|NUMBER|NUMERIC|REAL|ROW|SMALLINT|TIME|TIMESTAMP|TINYINT|VARBINARY|VARCHAR|VARYING|ARRAY)\\b",
-            "name": "storage.type.flink"
+        "strings": {
+            "patterns": [
+                {
+                    "name": "string.quoted.single.flink",
+                    "begin": "'",
+                    "end": "'",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.flink",
+                            "match": "''"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.double.flink",
+                    "begin": "\"",
+                    "end": "\"",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.flink",
+                            "match": "\\\\\""
+                        }
+                    ]
+                },
+                {
+                    "name": "variable.other.quoted.backtick.flink",
+                    "match": "`[^`]+`"
+                }
+            ]
         },
-        {
-            "match": "--.*$",
-            "name": "comment.line.double-dash.flink"
+        "numbers": {
+            "patterns": [
+                {
+                    "name": "constant.numeric.hex.flink",
+                    "match": "\\b0[xX][0-9a-fA-F]+\\b"
+                },
+                {
+                    "name": "constant.numeric.binary.flink",
+                    "match": "\\bX'[0-9a-fA-F]+'\\b"
+                },
+                {
+                    "name": "constant.numeric.scientific.flink",
+                    "match": "\\b\\d+\\.?\\d*[eE][+-]?\\d+\\b"
+                },
+                {
+                    "name": "constant.numeric.decimal.flink",
+                    "match": "\\b\\d+\\.\\d+\\b"
+                },
+                {
+                    "name": "constant.numeric.integer.flink",
+                    "match": "\\b\\d+\\b"
+                }
+            ]
         },
-        {
-            "begin": "/\\*",
-            "end": "\\*/",
-            "name": "comment.block.flink"
+        "operators": {
+            "patterns": [
+                {
+                    "name": "keyword.operator.comparison.flink",
+                    "match": "<>|!=|<=|>=|<|>|="
+                },
+                {
+                    "name": "keyword.operator.arithmetic.flink",
+                    "match": "\\+|-|\\*|/|%|\\|\\|"
+                },
+                {
+                    "name": "keyword.operator.assignment.flink",
+                    "match": ":="
+                }
+            ]
         },
-        {
-            "match": "'([^']|'')*'",
-            "name": "string.quoted.single.flink"
+        "punctuation": {
+            "patterns": [
+                {
+                    "name": "punctuation.separator.comma.flink",
+                    "match": ","
+                },
+                {
+                    "name": "punctuation.terminator.statement.flink",
+                    "match": ";"
+                },
+                {
+                    "name": "punctuation.definition.bracket.round.flink",
+                    "match": "[()]"
+                },
+                {
+                    "name": "punctuation.definition.bracket.square.flink",
+                    "match": "[\\[\\]]"
+                }
+            ]
         },
-        {
-            "match": "`[^`]+`",
-            "name": "variable.other.object.flink"
+        "constants": {
+            "patterns": [
+                {
+                    "name": "constant.language.boolean.true.flink",
+                    "match": "(?i)\\bTRUE\\b"
+                },
+                {
+                    "name": "constant.language.boolean.false.flink",
+                    "match": "(?i)\\bFALSE\\b"
+                },
+                {
+                    "name": "constant.language.null.flink",
+                    "match": "(?i)\\bNULL\\b"
+                },
+                {
+                    "name": "constant.language.unknown.flink",
+                    "match": "(?i)\\bUNKNOWN\\b"
+                }
+            ]
         },
-        {
-            "match": "\\b\\d+(\\.\\d+)?\\b",
-            "name": "constant.numeric.flink"
+        "data-types": {
+            "patterns": [
+                {
+                    "name": "storage.type.flink",
+                    "match": "(?i)\\b(BOOLEAN|TINYINT|SMALLINT|INT|INTEGER|BIGINT|FLOAT|DOUBLE|DECIMAL|DEC|NUMERIC|CHAR|CHARACTER|VARCHAR|STRING|BINARY|VARBINARY|BYTES|DATE|TIME|TIMESTAMP|TIMESTAMP_LTZ|INTERVAL|ARRAY|MAP|MULTISET|ROW|RAW|NULL)\\b"
+                },
+                {
+                    "name": "storage.type.precision.flink",
+                    "match": "(?i)\\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\\b(?=\\s+TO\\s+)"
+                },
+                {
+                    "name": "storage.type.interval.flink",
+                    "match": "(?i)\\b(YEARS?|MONTHS?|DAYS?|HOURS?|MINUTES?|SECONDS?)\\b"
+                }
+            ]
+        },
+        "ddl-keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.other.DDL.create.flink",
+                    "match": "(?i)\\b(CREATE)\\b"
+                },
+                {
+                    "name": "keyword.other.DDL.alter.flink",
+                    "match": "(?i)\\b(ALTER)\\b"
+                },
+                {
+                    "name": "keyword.other.DDL.drop.flink",
+                    "match": "(?i)\\b(DROP)\\b"
+                },
+                {
+                    "name": "keyword.other.DDL.object.flink",
+                    "match": "(?i)\\b(TABLE|VIEW|DATABASE|SCHEMA|FUNCTION|CATALOG|TEMPORARY|IF\\s+NOT\\s+EXISTS|IF\\s+EXISTS|LIKE|COMMENT|PARTITIONED\\s+BY|DISTRIBUTED\\s+BY|WITH)\\b"
+                },
+                {
+                    "name": "keyword.other.DDL.constraint.flink",
+                    "match": "(?i)\\b(PRIMARY\\s+KEY|FOREIGN\\s+KEY|UNIQUE|NOT\\s+NULL|NOT\\s+ENFORCED|ENFORCED|CONSTRAINT|REFERENCES)\\b"
+                },
+                {
+                    "name": "keyword.other.DDL.column.flink",
+                    "match": "(?i)\\b(ADD|MODIFY|RENAME|COLUMN|COLUMNS|SET|RESET|COMPACT)\\b"
+                }
+            ]
+        },
+        "dml-keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.other.DML.select.flink",
+                    "match": "(?i)\\b(SELECT|ALL|DISTINCT)\\b"
+                },
+                {
+                    "name": "keyword.other.DML.insert.flink",
+                    "match": "(?i)\\b(INSERT\\s+INTO|INSERT\\s+OVERWRITE|VALUES)\\b"
+                },
+                {
+                    "name": "keyword.other.DML.update.flink",
+                    "match": "(?i)\\b(UPDATE)\\b"
+                },
+                {
+                    "name": "keyword.other.DML.delete.flink",
+                    "match": "(?i)\\b(DELETE)\\b"
+                },
+                {
+                    "name": "keyword.other.DML.merge.flink",
+                    "match": "(?i)\\b(MERGE\\s+INTO|MATCHED|NOT\\s+MATCHED)\\b"
+                }
+            ]
+        },
+        "clause-keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.other.clause.from.flink",
+                    "match": "(?i)\\b(FROM)\\b"
+                },
+                {
+                    "name": "keyword.other.clause.join.flink",
+                    "match": "(?i)\\b(JOIN|INNER\\s+JOIN|LEFT\\s+JOIN|LEFT\\s+OUTER\\s+JOIN|RIGHT\\s+JOIN|RIGHT\\s+OUTER\\s+JOIN|FULL\\s+JOIN|FULL\\s+OUTER\\s+JOIN|CROSS\\s+JOIN|NATURAL\\s+JOIN|LATERAL)\\b"
+                },
+                {
+                    "name": "keyword.other.clause.on.flink",
+                    "match": "(?i)\\b(ON|USING)\\b"
+                },
+                {
+                    "name": "keyword.other.clause.where.flink",
+                    "match": "(?i)\\b(WHERE)\\b"
+                },
+                {
+                    "name": "keyword.other.clause.groupby.flink",
+                    "match": "(?i)\\b(GROUP\\s+BY|GROUPING\\s+SETS|ROLLUP|CUBE)\\b"
+                },
+                {
+                    "name": "keyword.other.clause.having.flink",
+                    "match": "(?i)\\b(HAVING)\\b"
+                },
+                {
+                    "name": "keyword.other.clause.orderby.flink",
+                    "match": "(?i)\\b(ORDER\\s+BY|ASC|DESC|NULLS\\s+FIRST|NULLS\\s+LAST)\\b"
+                },
+                {
+                    "name": "keyword.other.clause.limit.flink",
+                    "match": "(?i)\\b(LIMIT|OFFSET|FETCH\\s+FIRST|FETCH\\s+NEXT|ROWS\\s+ONLY)\\b"
+                },
+                {
+                    "name": "keyword.other.clause.set.flink",
+                    "match": "(?i)\\b(UNION|UNION\\s+ALL|INTERSECT|INTERSECT\\s+ALL|EXCEPT|EXCEPT\\s+ALL|MINUS|MINUS\\s+ALL)\\b"
+                },
+                {
+                    "name": "keyword.other.clause.subquery.flink",
+                    "match": "(?i)\\b(IN|NOT\\s+IN|EXISTS|NOT\\s+EXISTS|ANY|SOME|ALL)\\b"
+                },
+                {
+                    "name": "keyword.other.clause.case.flink",
+                    "match": "(?i)\\b(CASE|WHEN|THEN|ELSE|END)\\b"
+                },
+                {
+                    "name": "keyword.other.clause.as.flink",
+                    "match": "(?i)\\b(AS)\\b"
+                },
+                {
+                    "name": "keyword.other.clause.between.flink",
+                    "match": "(?i)\\b(BETWEEN)\\b"
+                },
+                {
+                    "name": "keyword.other.clause.like.flink",
+                    "match": "(?i)\\b(LIKE|ILIKE|SIMILAR\\s+TO|ESCAPE)\\b"
+                },
+                {
+                    "name": "keyword.other.clause.is.flink",
+                    "match": "(?i)\\b(IS\\s+NULL|IS\\s+NOT\\s+NULL|IS\\s+TRUE|IS\\s+FALSE|IS\\s+NOT\\s+TRUE|IS\\s+NOT\\s+FALSE)\\b"
+                }
+            ]
+        },
+        "flink-specific-keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.other.flink.watermark.flink",
+                    "match": "(?i)\\b(WATERMARK\\s+FOR)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.metadata.flink",
+                    "match": "(?i)\\b(METADATA|METADATA\\s+FROM|VIRTUAL)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.show.flink",
+                    "match": "(?i)\\b(SHOW\\s+CATALOGS|SHOW\\s+CURRENT\\s+CATALOG|SHOW\\s+DATABASES|SHOW\\s+CURRENT\\s+DATABASE|SHOW\\s+TABLES|SHOW\\s+VIEWS|SHOW\\s+FUNCTIONS|SHOW\\s+MODULES|SHOW\\s+FULL\\s+MODULES|SHOW\\s+JARS|SHOW\\s+JOBS|SHOW\\s+CREATE\\s+TABLE|SHOW\\s+CREATE\\s+VIEW|SHOW\\s+COLUMNS|SHOW\\s+PARTITIONS)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.show.simple.flink",
+                    "match": "(?i)\\b(SHOW)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.describe.flink",
+                    "match": "(?i)\\b(DESCRIBE|DESC)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.explain.flink",
+                    "match": "(?i)\\b(EXPLAIN\\s+PLAN\\s+FOR|EXPLAIN\\s+ESTIMATED_COST|EXPLAIN\\s+CHANGELOG_MODE|EXPLAIN\\s+JSON_EXECUTION_PLAN|EXPLAIN)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.use.flink",
+                    "match": "(?i)\\b(USE\\s+CATALOG|USE\\s+MODULES|USE)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.set.flink",
+                    "match": "(?i)\\b(SET|RESET)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.execute.flink",
+                    "match": "(?i)\\b(EXECUTE\\s+STATEMENT\\s+SET|EXECUTE|BEGIN\\s+STATEMENT\\s+SET|END)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.add.flink",
+                    "match": "(?i)\\b(ADD\\s+JAR|REMOVE\\s+JAR)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.analyze.flink",
+                    "match": "(?i)\\b(ANALYZE\\s+TABLE|COMPUTE\\s+STATISTICS)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.load.flink",
+                    "match": "(?i)\\b(LOAD\\s+MODULE|UNLOAD\\s+MODULE)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.job.flink",
+                    "match": "(?i)\\b(STOP\\s+JOB|WITH\\s+SAVEPOINT|WITH\\s+DRAIN)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.temporal.flink",
+                    "match": "(?i)\\b(FOR\\s+SYSTEM_TIME\\s+AS\\s+OF|SYSTEM_TIME|PROCTIME|ROWTIME)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.match-recognize.flink",
+                    "match": "(?i)\\b(MATCH_RECOGNIZE|PATTERN|DEFINE|MEASURES|ONE\\s+ROW\\s+PER\\s+MATCH|ALL\\s+ROWS\\s+PER\\s+MATCH|AFTER\\s+MATCH\\s+SKIP|PAST\\s+LAST\\s+ROW|TO\\s+NEXT\\s+ROW|TO\\s+LAST|TO\\s+FIRST|PERMUTE)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.cep.flink",
+                    "match": "(?i)\\b(CLASSIFIER|MATCH_NUMBER|RUNNING|FINAL|PREV|NEXT|FIRST|LAST)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.catalog.flink",
+                    "match": "(?i)\\b(CREATE\\s+CATALOG|DROP\\s+CATALOG|ALTER\\s+CATALOG)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.module.flink",
+                    "match": "(?i)\\b(CREATE\\s+MODULE|DROP\\s+MODULE)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.compile.flink",
+                    "match": "(?i)\\b(COMPILE\\s+PLAN|COMPILE\\s+AND\\s+EXECUTE\\s+PLAN)\\b"
+                },
+                {
+                    "name": "keyword.other.flink.truncate.flink",
+                    "match": "(?i)\\b(TRUNCATE\\s+TABLE)\\b"
+                }
+            ]
+        },
+        "window-functions": {
+            "patterns": [
+                {
+                    "name": "support.function.window.tvf.flink",
+                    "match": "(?i)\\b(TUMBLE|HOP|SESSION|CUMULATE)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.window.descriptor.flink",
+                    "match": "(?i)\\b(TUMBLE_START|TUMBLE_END|TUMBLE_ROWTIME|TUMBLE_PROCTIME|HOP_START|HOP_END|HOP_ROWTIME|HOP_PROCTIME|SESSION_START|SESSION_END|SESSION_ROWTIME|SESSION_PROCTIME|CUMULATE_START|CUMULATE_END|CUMULATE_ROWTIME|CUMULATE_PROCTIME)\\b"
+                },
+                {
+                    "name": "keyword.other.window.flink",
+                    "match": "(?i)\\b(OVER|PARTITION\\s+BY|ORDER\\s+BY|ROWS|RANGE|GROUPS|UNBOUNDED|PRECEDING|FOLLOWING|CURRENT\\s+ROW|WINDOW)\\b"
+                },
+                {
+                    "name": "support.function.window.ranking.flink",
+                    "match": "(?i)\\b(ROW_NUMBER|RANK|DENSE_RANK|PERCENT_RANK|CUME_DIST|NTILE)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.window.value.flink",
+                    "match": "(?i)\\b(FIRST_VALUE|LAST_VALUE|NTH_VALUE|LAG|LEAD)\\b(?=\\s*\\()"
+                }
+            ]
+        },
+        "aggregate-functions": {
+            "patterns": [
+                {
+                    "name": "support.function.aggregate.flink",
+                    "match": "(?i)\\b(COUNT|SUM|AVG|MIN|MAX|COLLECT|VARIANCE|VAR_POP|VAR_SAMP|STDDEV|STDDEV_POP|STDDEV_SAMP|FIRST_VALUE|LAST_VALUE|LISTAGG|ARRAY_AGG)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.aggregate.approx.flink",
+                    "match": "(?i)\\b(APPROX_COUNT_DISTINCT)\\b(?=\\s*\\()"
+                }
+            ]
+        },
+        "builtin-functions": {
+            "patterns": [
+                {
+                    "name": "support.function.comparison.flink",
+                    "match": "(?i)\\b(COALESCE|NULLIF|IF|IFNULL|GREATEST|LEAST)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.string.flink",
+                    "match": "(?i)\\b(CHAR_LENGTH|CHARACTER_LENGTH|UPPER|LOWER|TRIM|LTRIM|RTRIM|REPEAT|REGEXP|REGEXP_REPLACE|REGEXP_EXTRACT|REGEXP_EXTRACT_ALL|OVERLAY|SUBSTRING|SUBSTR|REPLACE|POSITION|LOCATE|INSTR|LEFT|RIGHT|LPAD|RPAD|CONCAT|CONCAT_WS|SPLIT_INDEX|ASCII|CHR|ENCODE|DECODE|MD5|SHA1|SHA224|SHA256|SHA384|SHA512|SHA2|PARSE_URL|FROM_BASE64|TO_BASE64|UUID|REVERSE|INITCAP|TRANSLATE|JSON_VALUE|JSON_QUERY|JSON_EXISTS|JSON_STRING|JSON_OBJECT|JSON_ARRAY|JSON_ARRAYAGG|JSON_OBJECTAGG|IS_JSON|IS_JSON_OBJECT|IS_JSON_ARRAY|IS_JSON_SCALAR|SPACE|FORMAT|PRINTF|SOUNDEX|LEVENSHTEIN|SIMILARITY)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.math.flink",
+                    "match": "(?i)\\b(ABS|CEIL|CEILING|FLOOR|ROUND|TRUNCATE|TRUNC|EXP|LN|LOG|LOG10|LOG2|POWER|POW|SQRT|MOD|SIN|COS|TAN|COT|ASIN|ACOS|ATAN|ATAN2|SINH|COSH|TANH|DEGREES|RADIANS|SIGN|PI|E|RAND|RAND_INTEGER|BIN|HEX|BITAND|BITOR|BITXOR|BITNOT|BIT_COUNT|BIT_GET|BIT_LSHIFT|BIT_RSHIFT|WIDTH_BUCKET|CBRT|FACTORIAL|GCD|LCM)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.datetime.flink",
+                    "match": "(?i)\\b(DATE|TIME|TIMESTAMP|TIMESTAMP_LTZ|TO_DATE|TO_TIMESTAMP|TO_TIMESTAMP_LTZ|CURRENT_DATE|CURRENT_TIME|CURRENT_TIMESTAMP|CURRENT_ROW_TIMESTAMP|NOW|LOCALTIME|LOCALTIMESTAMP|CURRENT_WATERMARK|EXTRACT|YEAR|QUARTER|MONTH|WEEK|DAYOFYEAR|DAYOFMONTH|DAYOFWEEK|HOUR|MINUTE|SECOND|FLOOR|CEIL|DATE_FORMAT|TIMESTAMPADD|TIMESTAMPDIFF|CONVERT_TZ|FROM_UNIXTIME|UNIX_TIMESTAMP|DATEDIFF|DATE_ADD|DATE_SUB|DAYNAME|MONTHNAME|LAST_DAY|NEXT_DAY|IS_LEAP_YEAR|DATE_TRUNC|TIME_TRUNC)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.datetime.proctime.flink",
+                    "match": "(?i)\\b(PROCTIME)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.conditional.flink",
+                    "match": "(?i)\\b(CASE|WHEN|THEN|ELSE|END|NULLIF|COALESCE|IF|IFNULL)\\b"
+                },
+                {
+                    "name": "support.function.conversion.flink",
+                    "match": "(?i)\\b(CAST|TRY_CAST|TYPEOF|CONVERT)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.collection.flink",
+                    "match": "(?i)\\b(CARDINALITY|ELEMENT|ARRAY|MAP|MAP_KEYS|MAP_VALUES|MAP_ENTRIES|MAP_FROM_ARRAYS|MAP_UNION|ARRAY_CONTAINS|ARRAY_DISTINCT|ARRAY_POSITION|ARRAY_REMOVE|ARRAY_REVERSE|ARRAY_UNION|ARRAY_CONCAT|ARRAY_SLICE|ARRAY_JOIN|ARRAY_MAX|ARRAY_MIN|ARRAY_SORT|ARRAY_EXCEPT|ARRAY_INTERSECT|ARRAY_PREPEND|ARRAY_APPEND)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.row.flink",
+                    "match": "(?i)\\b(ROW|FLATTEN)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.hash.flink",
+                    "match": "(?i)\\b(HASH_CODE|MURMUR_HASH|MURMUR_HASH_64|CRC32|XXH3_64)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.auxiliary.flink",
+                    "match": "(?i)\\b(SOURCE_WATERMARK|PRINT|UUID|CURRENT_CATALOG|CURRENT_DATABASE|USER|SESSION_USER|SYSTEM_USER)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.table.flink",
+                    "match": "(?i)\\b(UNNEST|GENERATE_SERIES|EXPLODE|LATERAL\\s+TABLE)\\b(?=\\s*\\()"
+                },
+                {
+                    "name": "support.function.descriptor.flink",
+                    "match": "(?i)\\b(DESCRIPTOR)\\b(?=\\s*\\()"
+                }
+            ]
+        },
+        "logical-operators": {
+            "patterns": [
+                {
+                    "name": "keyword.operator.logical.flink",
+                    "match": "(?i)\\b(AND|OR|NOT|IS|IS\\s+NOT)\\b"
+                }
+            ]
+        },
+        "identifiers": {
+            "patterns": [
+                {
+                    "name": "variable.other.column.flink",
+                    "match": "(?<=[,\\(\\s])\\s*[a-zA-Z_][a-zA-Z0-9_]*(?=\\s+(?i)(BIGINT|BOOLEAN|TINYINT|SMALLINT|INT|INTEGER|FLOAT|DOUBLE|DECIMAL|DEC|NUMERIC|CHAR|CHARACTER|VARCHAR|STRING|BINARY|VARBINARY|BYTES|DATE|TIME|TIMESTAMP|TIMESTAMP_LTZ|INTERVAL|ARRAY|MAP|MULTISET|ROW|RAW))"
+                },
+                {
+                    "name": "entity.name.function.flink",
+                    "match": "[a-zA-Z_][a-zA-Z0-9_]*(?=\\s*\\()"
+                },
+                {
+                    "name": "variable.other.table.flink",
+                    "match": "(?i)(?<=FROM|JOIN|INTO|UPDATE|TABLE|ANALYZE\\s+TABLE)\\s+([a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*)"
+                }
+            ]
+        },
+        "connector-properties": {
+            "patterns": [
+                {
+                    "comment": "Common connector property keys",
+                    "name": "variable.parameter.connector.flink",
+                    "match": "(?i)(?<='\\s*)(connector|format|topic|properties\\.bootstrap\\.servers|properties\\.group\\.id|scan\\.startup\\.mode|sink\\.partitioner|sink\\.parallelism|key\\.format|value\\.format|key\\.fields|value\\.fields-include|json\\.fail-on-missing-field|json\\.ignore-parse-errors|csv\\.field-delimiter|csv\\.disable-quote-character|csv\\.quote-character|csv\\.allow-comments|csv\\.ignore-parse-errors|csv\\.array-element-delimiter|avro\\.codec|debezium-json\\.schema-include|debezium-json\\.ignore-parse-errors|canal-json\\.ignore-parse-errors|raw\\.endianness|raw\\.charset|parquet\\.compression|orc\\.compress|bucket|bucket-key|path|file\\.path|sink\\.rolling-policy\\.file-size|sink\\.rolling-policy\\.rollover-interval|sink\\.rolling-policy\\.check-interval|auto-compaction|compaction\\.file-size|partition\\.time-extractor\\.timestamp-pattern|partition\\.time-extractor\\.kind|sink\\.partition-commit\\.trigger|sink\\.partition-commit\\.delay|sink\\.partition-commit\\.watermark-time-zone|sink\\.partition-commit\\.policy\\.kind|hostname|port|username|password|database-name|schema-name|table-name|driver|url|jdbc\\.url|lookup\\.cache\\.max-rows|lookup\\.cache\\.ttl|lookup\\.max-retries|sink\\.buffer-flush\\.max-rows|sink\\.buffer-flush\\.interval|sink\\.max-retries|sink\\.parallelism|scan\\.parallelism|inlong\\.metric|sink\\.semantic|source\\.multiple\\.enable|server-id|server-time-zone|connect\\.timeout|debezium\\..*|changelog-mode|lookup\\.cache|lookup\\.partial-cache\\.max-rows|lookup\\.partial-cache\\.expire-after-write|lookup\\.partial-cache\\.expire-after-access|lookup\\.partial-cache\\.cache-missing-key|lookup\\.max-retries|lookup\\.async|print-identifier|standard-error|sink\\.delivery-guarantee|sink\\.transactional-id-prefix|scan\\.bounded\\.mode|scan\\.bounded\\.specific-offsets|scan\\.bounded\\.timestamp-millis)(?=')"
+                },
+                {
+                    "comment": "Kafka connector values",
+                    "name": "string.unquoted.connector-value.flink",
+                    "match": "(?i)(?<='\\s*)(kafka|upsert-kafka|filesystem|jdbc|hive|elasticsearch-6|elasticsearch-7|hbase-1\\.4|hbase-2\\.2|kinesis|firehose|dynamodb|pulsar|rabbitmq|mongodb|mongodb-cdc|mysql-cdc|postgres-cdc|oracle-cdc|sqlserver-cdc|db2-cdc|tidb-cdc|oceanbase-cdc|datagen|blackhole|print|values)(?=')"
+                },
+                {
+                    "comment": "Format values",
+                    "name": "string.unquoted.format-value.flink",
+                    "match": "(?i)(?<='\\s*)(json|csv|avro|avro-confluent|parquet|orc|raw|debezium-json|debezium-avro-confluent|canal-json|maxwell-json|ogg-json|protobuf)(?=')"
+                },
+                {
+                    "comment": "Startup mode values",
+                    "name": "string.unquoted.startup-mode-value.flink",
+                    "match": "(?i)(?<='\\s*)(earliest-offset|latest-offset|group-offsets|timestamp|specific-offsets)(?=')"
+                }
+            ]
         }
-    ]
+    }
 }
+
