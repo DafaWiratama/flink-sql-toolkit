@@ -34,7 +34,7 @@ export class FlinkSqlNotebookSerializer implements vscode.NotebookSerializer {
 
         // If it's a new empty file, give it one empty cell
         if (cells.length === 0) {
-            cells.push(new vscode.NotebookCellData(vscode.NotebookCellKind.Code, '', 'sql'));
+            cells.push(new vscode.NotebookCellData(vscode.NotebookCellKind.Code, '', 'apache-flink'));
         }
 
         return new vscode.NotebookData(cells);

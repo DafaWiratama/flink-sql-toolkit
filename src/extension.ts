@@ -10,6 +10,7 @@ import { FlinkGatewayClient } from './flinkClient';
 import { SessionManager } from './sessionManager';
 import { FlinkCatalogProvider } from './catalogProvider';
 import { FlinkStatusBar } from './statusBar';
+import { FlinkSqlCompletionItemProvider } from './completionProvider';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -132,23 +133,37 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 		if (jobManagerUrl === undefined) { return; }
 
+		const currentSessionName = config.get<string>('sessionName', 'default');
+		const sessionName = await vscode.window.showInputBox({
+			title: 'Default Session Name',
+			prompt: 'Enter the name for the default Flink Session',
+			value: currentSessionName,
+			ignoreFocusOut: true
+		});
+		if (sessionName === undefined) { return; }
+
 		await config.update('gatewayUrl', gatewayUrl, vscode.ConfigurationTarget.Global);
 		await config.update('jobManagerUrl', jobManagerUrl, vscode.ConfigurationTarget.Global);
+		await config.update('sessionName', sessionName, vscode.ConfigurationTarget.Global);
 
 		runningJobsProvider.updateConnection(gatewayUrl, jobManagerUrl);
 		historyJobsProvider.updateConnection(gatewayUrl, jobManagerUrl);
-		tmsProvider.updateConnection(gatewayUrl, jobManagerUrl);
 		tmsProvider.updateConnection(gatewayUrl, jobManagerUrl);
 		catalogProvider.updateConnection(gatewayUrl, jobManagerUrl);
 
 		const newClient = new FlinkGatewayClient(gatewayUrl, jobManagerUrl);
 		sessionManager.updateClient(newClient);
+		sqlCompletionProvider.updateClient(newClient);
+
 		controller.resetConnection();
 
 		vscode.window.showInformationMessage('Flink connection settings updated successfully.');
 	});
 
-	context.subscriptions.push(disposable, notebookSerializer, controller, runningJobsTreeView, historyJobsTreeView, refreshRunningCommand, refreshHistoryCommand, cancelJobCommand, refreshTMCommand, refreshExplorerCommand, selectDatabaseCommand, configureCommand, createSessionCommand, selectSessionCommand, sessionManager);
+	const sqlCompletionProvider = new FlinkSqlCompletionItemProvider(client, sessionManager);
+	const completionDisposable = vscode.languages.registerCompletionItemProvider('apache-flink', sqlCompletionProvider, '.', ' '); // Trigger on dot and space
+
+	context.subscriptions.push(disposable, notebookSerializer, controller, runningJobsTreeView, historyJobsTreeView, refreshRunningCommand, refreshHistoryCommand, cancelJobCommand, refreshTMCommand, refreshExplorerCommand, selectDatabaseCommand, configureCommand, createSessionCommand, selectSessionCommand, sessionManager, completionDisposable);
 
 	// Command: Show Job Detail
 	context.subscriptions.push(vscode.commands.registerCommand('flink.showJobDetail', async (jobId: string, status?: string) => {

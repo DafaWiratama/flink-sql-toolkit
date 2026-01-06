@@ -33,6 +33,11 @@
           "type": "string",
           "default": "http://localhost:8081",
           "description": "URL of the Flink JobManager (dashboard)"
+        },
+        "flink.sessionName": {
+          "type": "string",
+          "default": "default",
+          "description": "Name of the default Flink Session to create/use"
         }
       }
     },

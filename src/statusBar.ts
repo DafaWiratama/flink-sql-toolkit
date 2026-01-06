@@ -20,26 +20,16 @@ export class FlinkStatusBar implements vscode.Disposable {
     async update() {
         try {
             const tms = await this.client.getTaskManagers();
+            if (tms && tms.length > 0) { // Check if tms is not null/undefined and not empty
+                const totalSlots = tms.reduce((acc: number, tm: any) => acc + (tm.slotsNumber || 0), 0);
+                const freeSlots = tms.reduce((acc: number, tm: any) => acc + (tm.freeSlots || 0), 0);
+                const activeSlots = totalSlots - freeSlots;
 
-            let totalSlots = 0;
-            let freeSlots = 0;
-
-            for (const tm of tms) {
-                totalSlots += (tm.slotsNumber || 0);
-                freeSlots += (tm.freeSlots || 0);
-            }
-
-            const activeSlots = totalSlots - freeSlots;
-
-            // Update Status Bar
-            // Icon: server or pulse
-            this.statusBarItem.text = `$(server) ${activeSlots}/${totalSlots} Slots`;
-            this.statusBarItem.tooltip = `Flink Cluster Status\n\nActive Tasks: ${activeSlots}\nFree Slots: ${freeSlots}\nTotal Slots: ${totalSlots}`;
-
-            if (totalSlots > 0) {
+                this.statusBarItem.text = `$(server) Flink: ${tms.length} TMs (${activeSlots}/${totalSlots} Slots)`;
+                this.statusBarItem.tooltip = `Flink Cluster Status\n\nActive Tasks: ${activeSlots}\nFree Slots: ${freeSlots}\nTotal Slots: ${totalSlots}`;
+                this.statusBarItem.color = undefined; // Default color
                 this.statusBarItem.show();
             } else {
-                this.statusBarItem.hide(); // Hide if no cluster connection
             }
 
         } catch (error) {

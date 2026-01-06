@@ -124,22 +124,23 @@ export class FlinkGatewayClient {
         }
     }
 
-    async getTaskManagers(): Promise<any[]> {
+    async getTaskManagers(): Promise<any[] | null> {
         try {
             const response = await fetch(`${this.jobManagerUrl}/taskmanagers`);
             if (!response.ok) {
                 console.warn('[Flink JobManager] Failed to fetch taskmanagers:', response.statusText);
-                return [];
+                return null;
             }
             const data: any = await response.json();
             return data.taskmanagers || [];
         } catch (error: any) {
+            // If fetch fails (e.g. connection refused), return null to indicate offline
             console.warn('[Flink JobManager] Error fetching taskmanagers:', error.message);
-            return [];
+            return null;
         }
     }
 
-    async getJobs(): Promise<any[]> {
+    async getJobs(): Promise<any[] | null> {
         try {
             const response = await fetch(`${this.jobManagerUrl}/jobs/overview`);
             if (!response.ok) {
@@ -147,7 +148,7 @@ export class FlinkGatewayClient {
                 const response2 = await fetch(`${this.jobManagerUrl}/jobs`);
                 if (!response2.ok) {
                     console.warn('[Flink JobManager] Failed to fetch jobs:', response.statusText);
-                    return [];
+                    return null;
                 }
                 const data2: any = await response2.json();
                 return data2.jobs || [];
@@ -156,7 +157,7 @@ export class FlinkGatewayClient {
             return data.jobs || [];
         } catch (error: any) {
             console.warn('[Flink JobManager] Error fetching jobs:', error.message);
-            return [];
+            return null;
         }
     }
 
@@ -277,6 +278,11 @@ export class FlinkGatewayClient {
 
     async listTables(sessionHandle: string, catalog: string, database: string): Promise<string[]> {
         const rows = await this.executeMetadataSql(sessionHandle, `SHOW TABLES IN \`${catalog}\`.\`${database}\``);
+        return rows.map(r => this.getValue(r, 0));
+    }
+
+    async listTablesCurrent(sessionHandle: string): Promise<string[]> {
+        const rows = await this.executeMetadataSql(sessionHandle, 'SHOW TABLES');
         return rows.map(r => this.getValue(r, 0));
     }
 

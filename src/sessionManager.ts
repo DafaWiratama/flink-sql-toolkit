@@ -72,7 +72,9 @@ export class SessionManager implements vscode.Disposable {
         if (!this._activeSessionHandle) {
             // Auto-create if none exists
             if (this._sessions.length === 0) {
-                return await this.createSession('default_session');
+                const config = vscode.workspace.getConfiguration('flink');
+                const defaultName = config.get<string>('sessionName', 'default');
+                return await this.createSession(defaultName);
             }
 
             // Or prompt user

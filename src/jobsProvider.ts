@@ -91,15 +91,38 @@ export class FlinkJobsProvider implements vscode.TreeDataProvider<JobTreeItem>, 
     private async fetchJobs(): Promise<void> {
         try {
             const rawJobs = await this.client.getJobs();
+
+            if (rawJobs === null) {
+                // Connection failed / Offline
+                this.jobs = [{
+                    jobId: 'offline',
+                    jobName: 'JobManager Offline',
+                    status: 'OFFLINE',
+                    startTime: ''
+                }];
+                return;
+            }
+
             this.jobs = rawJobs.map((j: any) => ({
                 jobId: j.jid,
                 jobName: j.name,
                 status: j.state,
                 startTime: this.formatTime(j['start-time'])
             }));
+
+            if (this.jobs.length === 0) {
+                // Empty state if needed, or just empty list
+            }
+
         } catch (error: any) {
             Logger.error('[Flink Jobs] Failed to fetch jobs:', error.message);
-            this.jobs = [];
+            // Fallback to offline state
+            this.jobs = [{
+                jobId: 'offline',
+                jobName: 'JobManager Offline',
+                status: 'OFFLINE',
+                startTime: ''
+            }];
         }
     }
 
@@ -116,6 +139,7 @@ export class FlinkJobsProvider implements vscode.TreeDataProvider<JobTreeItem>, 
             case 'FAILED': return new vscode.ThemeIcon('error');
             case 'CANCELED': return new vscode.ThemeIcon('circle-slash');
             case 'SUSPENDED': return new vscode.ThemeIcon('debug-pause');
+            case 'OFFLINE': return new vscode.ThemeIcon('bracket-error');
             default: return new vscode.ThemeIcon('circle-outline');
         }
     }
@@ -156,10 +180,12 @@ class JobTreeItem extends vscode.TreeItem {
         this.contextValue = jobData.status === 'RUNNING' ? 'flink-job-running' : 'flink-job-history';
 
         // Command to open details
-        this.command = {
-            command: 'flink.showJobDetail',
-            title: 'Show Job Details',
-            arguments: [jobData.jobId, jobData.status]
-        };
+        if (jobData.status !== 'OFFLINE') {
+            this.command = {
+                command: 'flink.showJobDetail',
+                title: 'Show Job Details',
+                arguments: [jobData.jobId, jobData.status]
+            };
+        }
     }
 }

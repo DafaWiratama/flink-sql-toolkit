@@ -80,12 +80,44 @@ export class FlinkTaskManagersProvider implements vscode.WebviewViewProvider, vs
 
         try {
             const tms = await this.client.getTaskManagers();
+
+            if (tms === null) {
+                this._view.webview.html = this.getErrorHtml('JobManager Offline');
+                return;
+            }
+
             const html = this.getHtmlForWebview(tms);
             this._view.webview.html = html;
-        } catch (error) {
+        } catch (error: any) {
             Logger.error('Failed to fetch task managers:', error);
-            // Optionally show error state in webview
+            this._view.webview.html = this.getErrorHtml(error.message || 'Unknown Error');
         }
+    }
+
+    private getErrorHtml(message: string): string {
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { 
+            font-family: var(--vscode-editor-font-family); 
+            font-size: var(--vscode-editor-font-size);
+            color: var(--vscode-editor-foreground); 
+            padding: 20px; 
+            text-align: center;
+        }
+        .error { color: var(--vscode-errorForeground); margin-bottom: 10px; }
+        .icon { font-size: 24px; margin-bottom: 10px; display: block; }
+    </style>
+</head>
+<body>
+    <div class="icon">⚠️</div>
+    <div class="error">${message}</div>
+    <div>Please check your connection settings.</div>
+</body>
+</html>`;
     }
 
     private formatBytes(bytes: number): string {
@@ -125,7 +157,6 @@ export class FlinkTaskManagersProvider implements vscode.WebviewViewProvider, vs
             uniqueIds.add(tm.id);
             return true;
         }).map(tm => {
-            const shortId = tm.id.substring(0, 8) + '...';
             const heartbeat = tm.timeSinceLastHeartbeat
                 ? new Date(tm.timeSinceLastHeartbeat).toLocaleTimeString()
                 : '-';
@@ -148,7 +179,6 @@ export class FlinkTaskManagersProvider implements vscode.WebviewViewProvider, vs
             return `
             <div class="tm">
                 <table>
-                    ${row('ID', shortId)}
                     ${row('Last HB', heartbeat)}
                     ${row('Total Slots', tm.slotsNumber)}
                     ${row('Free Slots', tm.freeSlots)}
