@@ -28,6 +28,17 @@ export interface ResultData {
 
 
 
+// Custom Error class to carry Flink server-side stack traces
+export class FlinkServerError extends Error {
+    constructor(message: string, stack?: string, public statusCode?: number) {
+        super(message);
+        this.name = 'Flink Server Error';
+        if (stack) {
+            this.stack = stack;
+        }
+    }
+}
+
 export class FlinkGatewayClient {
     private baseUrl: string;
     private jobManagerUrl: string;
@@ -52,13 +63,65 @@ export class FlinkGatewayClient {
 
             if (!response.ok) {
                 const text = await response.text();
-                throw new Error(`Flink Gateway Error (${response.status}): ${text}`);
+                this.handleErrorResponse(response.status, text);
             }
 
             return await response.json();
         } catch (error: any) {
+            if (error instanceof FlinkServerError) {
+                throw error;
+            }
             throw new Error(`Failed to request Flink Gateway: ${error.message}`);
         }
+    }
+
+    private handleErrorResponse(status: number, text: string): void {
+        let message = `Flink Gateway Error (${status})`;
+        let stack: string | undefined = undefined;
+
+        try {
+            const data = JSON.parse(text);
+            if (data.errors && Array.isArray(data.errors)) {
+                // Primary error message
+                // data.errors[0] is usually "Internal server error." or similar short msg
+                if (data.errors.length > 0) {
+                    message = data.errors[0];
+                }
+
+                // Detailed stack trace is usually in data.errors[1]
+                if (data.errors.length > 1) {
+                    let rawStack = data.errors[1];
+                    // Clean up Flink's wrapping format
+                    // e.g. <Exception on server side:\n ... >
+                    rawStack = rawStack.replace(/^<Exception on server side:\n?/, '').replace(/>$/, '');
+                    stack = rawStack;
+
+                    // Extract "Caused by" for the friendly message
+                    const lines = rawStack.split('\n');
+                    const causedByLines = lines.filter((l: string) => l.trim().startsWith('Caused by:'));
+
+                    if (causedByLines.length > 0) {
+                        // Use the most specific cause (last one) to give the user immediate insight
+                        const rootCause = causedByLines[causedByLines.length - 1].trim();
+                        // Append to message
+                        message += ` ${rootCause}`;
+                    }
+                }
+            } else {
+                // Valid JSON but not the expected error format
+                message += `: ${text}`;
+            }
+        } catch {
+            // Not JSON, just raw text (maybe 404 html or plain text)
+            // Limit length if too long?
+            if (text.length > 500) {
+                message += `: ${text.substring(0, 500)}...`;
+            } else {
+                message += `: ${text}`;
+            }
+        }
+
+        throw new FlinkServerError(message, stack, status);
     }
 
     async createSession(sessionName: string): Promise<FlinkSession> {
@@ -232,9 +295,8 @@ export class FlinkGatewayClient {
         }
     }
 
-    // --- Metadata API (Compat Layer) ---
-    // Uses SQL internally because REST Metadata endpoints are not available on all Gateway versions.
-
+    // --- Metadata API (REST) ---
+    // Uses Flink 1.20 compatible REST endpoints, falls back to SQL if needed.
 
     public async runQuery(sessionHandle: string, sql: string): Promise<any[]> {
         return this.executeMetadataSql(sessionHandle, sql);
@@ -286,37 +348,106 @@ export class FlinkGatewayClient {
     }
 
     async listCatalogs(sessionHandle: string): Promise<string[]> {
+        return this.listCatalogsSql(sessionHandle);
+    }
+
+    private async listCatalogsSql(sessionHandle: string): Promise<string[]> {
         const rows = await this.executeMetadataSql(sessionHandle, 'SHOW CATALOGS');
         return rows.map(r => this.getValue(r, 0));
     }
 
     async listDatabases(sessionHandle: string, catalog: string): Promise<string[]> {
+        return this.listDatabasesSql(sessionHandle, catalog);
+    }
+
+    private async listDatabasesSql(sessionHandle: string, catalog: string): Promise<string[]> {
         const rows = await this.executeMetadataSql(sessionHandle, `SHOW DATABASES IN \`${catalog}\``);
         return rows.map(r => this.getValue(r, 0));
     }
 
-    async listTables(sessionHandle: string, catalog: string, database: string): Promise<string[]> {
-        const rows = await this.executeMetadataSql(sessionHandle, `SHOW TABLES IN \`${catalog}\`.\`${database}\``);
-        return rows.map(r => this.getValue(r, 0));
+    /**
+     * Sets the current catalog context.
+     */
+    async useCatalog(sessionHandle: string, catalog: string): Promise<void> {
+        await this.executeMetadataSql(sessionHandle, `USE CATALOG \`${catalog}\``);
     }
 
-    async listTablesCurrent(sessionHandle: string): Promise<string[]> {
-        const rows = await this.executeMetadataSql(sessionHandle, 'SHOW TABLES');
-        return rows.map(r => this.getValue(r, 0));
+    /**
+     * Sets the current database context.
+     */
+    async useDatabase(sessionHandle: string, database: string): Promise<void> {
+        await this.executeMetadataSql(sessionHandle, `USE \`${database}\``);
     }
 
-    async listViews(sessionHandle: string, catalog: string, database: string): Promise<string[]> {
-        const rows = await this.executeMetadataSql(sessionHandle, `SHOW VIEWS IN \`${catalog}\`.\`${database}\``);
-        return rows.map(r => this.getValue(r, 0));
+    /**
+     * Lists all objects (tables and views) with their kind.
+     * Uses SHOW TABLES and SHOW VIEWS from current session context.
+     */
+    async listTablesWithKind(sessionHandle: string): Promise<{ name: string, kind: string }[]> {
+        const tables = await this.listTables(sessionHandle);
+        const views = await this.listViews(sessionHandle);
+
+        // Create a set of view names for filtering (case-insensitive)
+        const viewSet = new Set(views.map(v => v.toLowerCase()));
+
+        const result: { name: string, kind: string }[] = [];
+
+        // Tables = items from SHOW TABLES that are NOT in SHOW VIEWS
+        for (const t of tables) {
+            if (!viewSet.has(t.toLowerCase())) {
+                result.push({ name: t, kind: 'TABLE' });
+            }
+        }
+
+        // Views = items from SHOW VIEWS
+        for (const v of views) {
+            result.push({ name: v, kind: 'VIEW' });
+        }
+
+        return result;
     }
 
-    async getTable(sessionHandle: string, catalog: string, database: string, table: string): Promise<any> {
+    /**
+     * Lists tables from the current session context.
+     */
+    async listTables(sessionHandle: string): Promise<string[]> {
+        try {
+            const rows = await this.executeMetadataSql(sessionHandle, 'SHOW TABLES');
+            return rows.map(r => this.getValue(r, 0));
+        } catch (e) {
+            Logger.warn('[FlinkClient] SHOW TABLES failed:', e);
+            return [];
+        }
+    }
+
+    /**
+     * Lists views from the current session context.
+     */
+    async listViews(sessionHandle: string): Promise<string[]> {
+        try {
+            const rows = await this.executeMetadataSql(sessionHandle, 'SHOW VIEWS');
+            return rows.map(r => this.getValue(r, 0));
+        } catch (e) {
+            Logger.warn('[FlinkClient] SHOW VIEWS failed:', e);
+            return [];
+        }
+    }
+
+    /**
+     * Gets table/view schema using DESCRIBE.
+     */
+    async getTableSchema(sessionHandle: string, catalog: string, database: string, table: string): Promise<{ name: string, dataType: string }[]> {
         const rows = await this.executeMetadataSql(sessionHandle, `DESCRIBE \`${catalog}\`.\`${database}\`.\`${table}\``);
-        // DESCRIBE output: name, type, ...
-        const columns = rows.map(r => ({
+        return rows.map(r => ({
             name: this.getValue(r, 0),
             dataType: this.getValue(r, 1)
         }));
+    }
+
+    // Legacy method for compatibility
+    async getTable(sessionHandle: string, catalog: string, database: string, table: string): Promise<any> {
+        const columns = await this.getTableSchema(sessionHandle, catalog, database, table);
         return { schema: { columns } };
     }
 }
+

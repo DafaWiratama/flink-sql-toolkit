@@ -4,7 +4,7 @@
   "publisher": "Wiratama",
   "description": "Interactive Apache Flink SQL development environment for VS Code. Write and execute Flink SQL queries in notebooks, explore cluster metadata (catalogs, databases, tables), monitor running jobs and cluster status, and manage your Flink cluster—all within your editor.",
   "icon": "icon-color.png",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -112,6 +112,11 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "flinkExplorer.selectCatalog",
+        "title": "Select Catalog",
+        "icon": "$(server-environment)"
+      },
+      {
         "command": "flinkExplorer.selectDatabase",
         "title": "Select Database",
         "icon": "$(database)"
@@ -155,7 +160,12 @@
           "group": "navigation"
         },
         {
-          "command": "flink.configureConnection",
+          "command": "flinkExplorer.selectCatalog",
+          "when": "view == flinkExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "flinkExplorer.selectDatabase",
           "when": "view == flinkExplorer",
           "group": "navigation"
         },
@@ -174,11 +184,6 @@
         {
           "command": "flinkJobs.cancel",
           "when": "view == flinkRunningJobs && viewItem == flink-job-running",
-          "group": "inline"
-        },
-        {
-          "command": "flinkExplorer.selectDatabase",
-          "when": "view == flinkExplorer && viewItem == catalog",
           "group": "inline"
         }
       ],

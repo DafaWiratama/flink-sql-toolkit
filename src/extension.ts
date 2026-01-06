@@ -81,7 +81,7 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	// Register TaskManagers sidebar
-	const tmsProvider = new FlinkTaskManagersProvider(gatewayUrl, jobManagerUrl);
+	const tmsProvider = new FlinkTaskManagersProvider(gatewayUrl, jobManagerUrl, sessionManager);
 	vscode.window.registerWebviewViewProvider('flinkTaskManagers', tmsProvider);
 
 	// Register Explorer sidebar
@@ -97,6 +97,10 @@ export function activate(context: vscode.ExtensionContext) {
 
 	const selectDatabaseCommand = vscode.commands.registerCommand('flinkExplorer.selectDatabase', (item) => {
 		catalogProvider.selectDatabase(item);
+	});
+
+	const selectCatalogCommand = vscode.commands.registerCommand('flinkExplorer.selectCatalog', () => {
+		catalogProvider.selectCatalog();
 	});
 
 	const selectObjectCommand = vscode.commands.registerCommand('flinkExplorer.selectObject', async (catalog, database, object, type) => {
@@ -172,7 +176,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const sqlCompletionProvider = new FlinkSqlCompletionItemProvider(client, sessionManager);
 	const completionDisposable = vscode.languages.registerCompletionItemProvider('apache-flink', sqlCompletionProvider, '.', ' '); // Trigger on dot and space
 
-	context.subscriptions.push(disposable, notebookSerializer, controller, runningJobsTreeView, historyJobsTreeView, refreshRunningCommand, refreshHistoryCommand, cancelJobCommand, refreshTMCommand, refreshExplorerCommand, selectDatabaseCommand, configureCommand, createSessionCommand, selectSessionCommand, sessionManager, completionDisposable);
+	context.subscriptions.push(disposable, notebookSerializer, controller, runningJobsTreeView, historyJobsTreeView, refreshRunningCommand, refreshHistoryCommand, cancelJobCommand, refreshTMCommand, refreshExplorerCommand, selectDatabaseCommand, selectCatalogCommand, configureCommand, createSessionCommand, selectSessionCommand, sessionManager, completionDisposable);
 
 	// Command: Show Job Detail
 	context.subscriptions.push(vscode.commands.registerCommand('flink.showJobDetail', async (jobId: string, status?: string) => {

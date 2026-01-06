@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { FlinkGatewayClient } from './flinkClient';
+import { SessionManager } from './sessionManager';
 import { Logger } from './utils/logger';
 
 export class FlinkTaskManagersProvider implements vscode.WebviewViewProvider, vscode.Disposable {
@@ -7,7 +8,7 @@ export class FlinkTaskManagersProvider implements vscode.WebviewViewProvider, vs
     private client: FlinkGatewayClient;
     private timer: NodeJS.Timeout | undefined;
 
-    constructor(gatewayUrl: string, jobManagerUrl: string) {
+    constructor(gatewayUrl: string, jobManagerUrl: string, private sessionManager: SessionManager) {
         this.client = new FlinkGatewayClient(gatewayUrl, jobManagerUrl);
     }
 
@@ -26,6 +27,13 @@ export class FlinkTaskManagersProvider implements vscode.WebviewViewProvider, vs
         webviewView.webview.options = {
             enableScripts: true,
         };
+
+        webviewView.webview.onDidReceiveMessage(message => {
+            if (message.command === 'copy') {
+                vscode.env.clipboard.writeText(message.text);
+                vscode.window.showInformationMessage(`Copied: ${message.text}`);
+            }
+        });
 
         this.updateContent();
 
@@ -87,7 +95,8 @@ export class FlinkTaskManagersProvider implements vscode.WebviewViewProvider, vs
                 return;
             }
 
-            const html = this.getHtmlForWebview(overview, tms);
+            const sessionHandle = this.sessionManager.getCurrentSessionHandle() || 'No Active Session';
+            const html = this.getHtmlForWebview(overview, tms, sessionHandle);
             this._view.webview.html = html;
         } catch (error: any) {
             Logger.error('Failed to fetch task managers:', error);
@@ -130,7 +139,7 @@ export class FlinkTaskManagersProvider implements vscode.WebviewViewProvider, vs
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    private getHtmlForWebview(overview: any, tms: any[]): string {
+    private getHtmlForWebview(overview: any, tms: any[], sessionHandle: string): string {
         const flinkVersion = overview['flink-version'] || 'Unknown';
         const commitId = overview['flink-commit'] || '';
         const slotsTotal = overview['slots-total'];
@@ -264,7 +273,22 @@ export class FlinkTaskManagersProvider implements vscode.WebviewViewProvider, vs
         .tm-v { font-family: monospace; }
         
         .no-data { text-align: center; color: var(--sub-fg); margin-top: 20px; }
+        .copy-btn {
+            background: none;
+            border: none;
+            color: var(--fg);
+            cursor: pointer;
+            font-size: 1.2em;
+            padding: 4px;
+        }
+        .copy-btn:hover { color: var(--accent); }
     </style>
+    <script>
+        const vscode = acquireVsCodeApi();
+        function copyText(text) {
+            vscode.postMessage({ command: 'copy', text: text });
+        }
+    </script>
 </head>
 <body>
     <div class="header">
@@ -277,6 +301,19 @@ export class FlinkTaskManagersProvider implements vscode.WebviewViewProvider, vs
         ${card('Slots', slotsTotal)}
         ${card('Jobs Running', jobsRunning)}
         ${card('Jobs Finished', jobsFinished)}
+    </div>
+
+    <div class="card" style="margin-bottom: 15px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <div class="card-label">Session UID</div>
+            <div class="card-value" style="font-size: 0.9em; font-family: monospace;">${sessionHandle}</div>
+        </div>
+        <button class="copy-btn" onclick="copyText('${sessionHandle}')" title="Copy Session UID">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M4 4l1-1h5.414L14 6.586V14l-1 1H5l-1-1V4zm9 3l-3-3H5v10h8V7z"/>
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M3 1L2 2v10l1 1V2h6.414l-1-1H3z"/>
+            </svg>
+        </button>
     </div>
 
     <div class="section-title">Task Managers</div>

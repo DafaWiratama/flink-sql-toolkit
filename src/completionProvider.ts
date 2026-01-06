@@ -249,7 +249,8 @@ export class FlinkSqlCompletionItemProvider implements vscode.CompletionItemProv
             return this.metadataCache.get(key)!;
         }
         try {
-            const result = await this.client.listTables(sessionHandle, catalog, db);
+            // Uses current session context (catalog/db already set)
+            const result = await this.client.listTables(sessionHandle);
             this.metadataCache.set(key, result);
             return result;
         } catch (e) {
@@ -263,7 +264,7 @@ export class FlinkSqlCompletionItemProvider implements vscode.CompletionItemProv
             return this.metadataCache.get(key)!;
         }
         try {
-            const result = await this.client.listTablesCurrent(sessionHandle);
+            const result = await this.client.listTables(sessionHandle);
             this.metadataCache.set(key, result);
             return result;
         } catch (e) {

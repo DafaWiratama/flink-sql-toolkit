@@ -109,6 +109,10 @@ export class SessionManager implements vscode.Disposable {
         return this._activeSessionHandle;
     }
 
+    getCurrentSessionHandle(): string | undefined {
+        return this._activeSessionHandle;
+    }
+
     async createSession(name?: string): Promise<string> {
         if (!name) {
             name = await vscode.window.showInputBox({
