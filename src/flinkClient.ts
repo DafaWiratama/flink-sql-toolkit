@@ -235,8 +235,6 @@ export class FlinkGatewayClient {
     // --- Metadata API (Compat Layer) ---
     // Uses SQL internally because REST Metadata endpoints are not available on all Gateway versions.
 
-    // --- Metadata API (Compat Layer) ---
-    // Uses SQL internally because REST Metadata endpoints are not available on all Gateway versions.
 
     public async runQuery(sessionHandle: string, sql: string): Promise<any[]> {
         return this.executeMetadataSql(sessionHandle, sql);

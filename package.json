@@ -232,6 +232,12 @@
         "scopeName": "source.flink",
         "path": "./syntaxes/flink.tmLanguage.json"
       }
+    ],
+    "snippets": [
+      {
+        "language": "apache-flink",
+        "path": "./snippets/flink.code-snippets"
+      }
     ]
   },
   "scripts": {

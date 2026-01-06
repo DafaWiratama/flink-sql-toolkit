@@ -1,0 +1,79 @@
+{
+    "Create Kafka Table": {
+        "prefix": "flink-create-kafka",
+        "body": [
+            "CREATE TABLE ${1:kafka_table} (",
+            "    ${2:id} ${3:STRING},",
+            "    ${4:ts} TIMESTAMP(3),",
+            "    WATERMARK FOR ${4:ts} AS ${4:ts} - INTERVAL '5' SECOND",
+            ") WITH (",
+            "    'connector' = 'kafka',",
+            "    'topic' = '${5:topic_name}',",
+            "    'properties.bootstrap.servers' = '${6:localhost:9092}',",
+            "    'properties.group.id' = '${7:group_id}',",
+            "    'scan.startup.mode' = 'latest-offset',",
+            "    'format' = 'json'",
+            ");"
+        ],
+        "description": "Create a Kafka source/sink table"
+    },
+    "Create Print Table": {
+        "prefix": "flink-create-print",
+        "body": [
+            "CREATE TABLE ${1:print_table} (",
+            "    ${2:id} ${3:STRING}",
+            ") WITH (",
+            "    'connector' = 'print'",
+            ");"
+        ],
+        "description": "Create a Print sink table"
+    },
+    "Create Datagen Table": {
+        "prefix": "flink-create-datagen",
+        "body": [
+            "CREATE TABLE ${1:datagen_table} (",
+            "    ${2:id} INT,",
+            "    ${3:ts} TIMESTAMP(3),",
+            "    WATERMARK FOR ${3:ts} AS ${3:ts}",
+            ") WITH (",
+            "    'connector' = 'datagen',",
+            "    'rows-per-second' = '${4:1}'",
+            ");"
+        ],
+        "description": "Create a DataGen source table"
+    },
+    "Tumble Window Aggregation": {
+        "prefix": "flink-window-tumble",
+        "body": [
+            "SELECT",
+            "    window_start, window_end,",
+            "    ${1:key},",
+            "    COUNT(*) as cnt",
+            "FROM TABLE(TUMBLE(TABLE ${2:source_table}, DESCRIPTOR(${3:row_time}), INTERVAL '${4:10}' MINUTES))",
+            "GROUP BY window_start, window_end, ${1:key};"
+        ],
+        "description": "Tumbling Window Aggregation (TVF)"
+    },
+    "Hop Window Aggregation": {
+        "prefix": "flink-window-hop",
+        "body": [
+            "SELECT",
+            "    window_start, window_end,",
+            "    ${1:key},",
+            "    COUNT(*) as cnt",
+            "FROM TABLE(HOP(TABLE ${2:source_table}, DESCRIPTOR(${3:row_time}), INTERVAL '${4:5}' MINUTES, INTERVAL '${5:10}' MINUTES))",
+            "GROUP BY window_start, window_end, ${1:key};"
+        ],
+        "description": "Hopping Window Aggregation (TVF)"
+    },
+    "Insert Into": {
+        "prefix": "insert-into",
+        "body": [
+            "INSERT INTO ${1:target_table}",
+            "SELECT",
+            "    ${2:*}",
+            "FROM ${3:source_table};"
+        ],
+        "description": "Insert Into statement"
+    }
+}

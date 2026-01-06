@@ -2,6 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { Logger } from './utils/logger';
+import { WebviewHelper } from './utils/webviewHelper';
 import { FlinkSqlNotebookSerializer } from './notebookSerializer';
 import { FlinkNotebookController } from './notebookController';
 import { FlinkJobsProvider } from './jobsProvider';
@@ -104,7 +105,6 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	// Register cancel command
-	// Register cancel command
 	const cancelJobCommand = vscode.commands.registerCommand('flinkJobs.cancel', (item: any) => {
 		runningJobsProvider.cancelJob(item);
 	});
@@ -191,7 +191,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}
 
-		// Default to 'running' if still unknown, though likely won't happen if job exists
+		// Default to 'running' if still unknown
 		const safeStatus = (jobStatus || 'running').toLowerCase();
 
 		const config = vscode.workspace.getConfiguration('flink');
@@ -215,21 +215,7 @@ export function activate(context: vscode.ExtensionContext) {
 		);
 
 		// Allow localhost content in Webview
-		panel.webview.html = `
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <style>
-                    html, body { height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; }
-                    iframe { width: 100%; height: 100%; border: none; }
-                </style>
-            </head>
-            <body>
-                <iframe src="${url}"></iframe>
-            </body>
-            </html>
-        `;
+		panel.webview.html = WebviewHelper.getFrameHtml(url);
 	}));
 }
 
