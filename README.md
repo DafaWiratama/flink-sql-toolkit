@@ -1,84 +1,96 @@
+
 # Apache Flink SQL Notebook for VS Code
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Apache Flink SQL Notebook** is a powerful VS Code extension that transforms your editor into a fully-featured interactive development environment for Apache Flink SQL. Connect to your Flink cluster, write SQL queries in notebooks, visualize results in real-time, and manage your jobs—all without leaving VS Code.
+**Apache Flink SQL Notebook** transforms VS Code into a first-class Interactive Development Environment (IDE) for Apache Flink. Write SQL, stream results in real-time, explore cluster metadata, and manage jobs—all without leaving your editor.
 
 ---
 
-## ✨ Features
+## ✨ Key Enhancements
 
-### 📓 Interactive SQL Notebooks
-- **Rich Notebook Interface**: Create `.flinksql` files to write and execute SQL queries cell-by-cell.
-- **Syntax Highlighting**: Full syntax support for Flink SQL dialect.
-- **Streaming Results**: Visualize streaming query results in real-time with dynamic tables that update as new data arrives.
+Recent updates allow you to do more with your data:
 
-### 🔍 comprehensive Explorer
-- **Metadata Browser**: Explore Catalogs, Databases, Tables, and Views directly from the sidebar.
-- **Job Management**:
-    - **Running Jobs**: Monitor active jobs, view status, and cancel them with a single click.
-    - **Job History**: Access details of completed or failed jobs.
-    - **Deep Dive**: Click on any job to instantly open the full Flink Web Dashboard for detailed metrics and logs.
+- 📊 **Advanced Visualization**: Client-side **Sorting** and **Filtering** on query results, plus **CSV/JSON Export**.
+- 🧠 **Intelligent Completion**: Context-aware **Column Auto-Completion** that understands table aliases and joins.
+- ⚡ **Productivity Snippets**: Built-in templates for Kafka tables, Window TVFs, and DataGen.
+- 🛠️ **Interactive Explorer**: Click to **Script SELECT** queries or **Copy DDL** statements instantly.
 
-### 🛠️ System Monitoring
-- **Cluster Status**: View real-time cluster health, including TaskManager count, available slots, and resource usage.
-- **Task Manager Details**: Drill down into individual TaskManagers to see hardware specs and slot distribution.
+---
+
+## 🚀 Features
+
+### 📓 Interactive Notebooks
+- **`.flinksql` Support**: Create notebook files to organize your queries.
+- **Streaming Results**: Run queries and watch results stream in real-time.
+- **Pause & Resume**: Control the flow of streaming data.
+- **Result Grid**:
+    - **Sort**: Click headers to sort by column.
+    - **Filter**: Type to filter rows instantly.
+    - **Export**: Download results as CSV or copy as JSON.
+
+### 🔍 Cluster Explorer
+Navigate your Flink ecosystem from the sidebar:
+- **Metadata Browser**: Drill down into Catalogs, Databases, and Tables.
+- **Quick Actions**:
+    - Right-click or use the **Details View** to interact with objects.
+    - **Script SELECT**: Inserts a `SELECT * ... LIMIT 100` snippet.
+    - **Copy DDL**: Copies the `CREATE TABLE` statement to your clipboard.
+
+### 🛡️ System Monitoring
+- **Running Jobs**: View active jobs, their status, and duration.
+- **Job History**: Access past job executions.
+- **One-Click Cancel**: Stop running jobs directly from the sidebar.
+- **Task Manager Details**: Monitor cluster health, slots, and resource usage.
 
 ### ⚡ Developer Experience
-- **Intelligent Refresh**: The UI automatically updates metadata and job lists when you execute modification statements (like `CREATE TABLE` or `DROP VIEW`).
-- **Error Handling**: Friendly error messages help you quickly identify issues like resource constraints or syntax errors.
+- **Auto-Completion**:
+    - Keywords, Functions, Catalogs, Databases, Tables.
+    - **Smart Column Suggestions**: Detects tables in `FROM/JOIN` clauses (including aliases like `t.col`) to suggest relevant columns.
+- **Code Snippets**: Type `flink-` to access templates:
+    - `flink-create-kafka`: Kafka Source/Sink table.
+    - `flink-create-print`: Print sink.
+    - `flink-window-tumble` / `flink-window-hop`: Window aggregations.
+
+### 🔌 Connectivity
+- **Auto-Configuration**: Prompts to configure connection on first use.
+- **Session Management**: Create and switch between Flink sessions easily.
 
 ---
 
-## 🚀 Getting Started
+## 🛠️ Getting Started
 
 ### Prerequisites
-
-1.  **VS Code**: Version 1.82.0 or higher.
-2.  **Apache Flink Cluster**: A running Flink cluster (Session or Application mode).
-3.  **Flink SQL Gateway**: The SQL Gateway must be running and accessible.
+1.  **VS Code**: Version `1.85.0` or higher.
+2.  **Apache Flink Cluster**: A running Flink cluster.
+3.  **Flink SQL Gateway**: Must be running and accessible (default port `8083`).
 
 ### Installation
+1.  Install the extension from the Marketplace.
+2.  Open or create a `.flinksql` file.
+3.  **Configure Connection**: Click the "Configure Connection" icon in the **Flink Explorer** title bar or use the Command Palette.
 
-1.  Install the extension from the VS Code Marketplace.
-2.  Open or create a file with the `.flinksql` extension.
-3.  The extension will activate and attempt to connect to the default local Flink endpoints.
-
----
-
-## ⚙️ Configuration
-
-You can configure the connection details in your VS Code settings (`settings.json`).
+### Configuration
+Update these settings in `.vscode/settings.json` or Global Settings:
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
-| `flink.gatewayUrl` | `http://localhost:8083` | The URL of the **Flink SQL Gateway** REST API. Ensure the gateway is started and this port is accessible. |
-| `flink.jobManagerUrl` | `http://localhost:8081` | The URL of the **Flink JobManager** Web Dashboard. Used for status checks and linking to job details. |
-
-> **Tip:** You can also configure these settings by clicking the "Configure Connection" button in the Flink Explorer title bar.
-
----
-
-## ⌨️ Commands
-
-Access these commands from the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`) or via the UI buttons:
-
-- **Flink: Refresh**: Refreshes the Explorer view and Job lists.
-- **Flink: Configure Connection**: open settings to update Gateway and JobManager URLs.
-- **Flink: Show Job Details**: Open the Flink Web Dashboard for a specific job.
-- **Flink: Stop Job**: Cancel a running job directly from the VS Code sidebar.
+| `flink.gatewayUrl` | `http://localhost:8083` | URL of the Flink SQL Gateway REST API. |
+| `flink.jobManagerUrl` | `http://localhost:8081` | URL of the Flink JobManager Dashboard (for monitoring). |
+| `flink.sessionName` | `default` | Name of the Flink Session to use. |
 
 ---
 
-## 🔧 Known Issues
+## ⌨️ Useful Commands
 
-- Complex split of SQL statements might encounter issues if semicolons are used within string literals. A proper SQL parser is planned for future updates.
-- Metadata operations currently rely on the SQL Gateway's compatibility. Ensure your Gateway version supports standard REST endpoints.
-
----
+| Command | Description |
+| :--- | :--- |
+| `Flink: Refresh` | Refreshes Explorer and Job lists. |
+| `Flink: Configure Connection` | Update Gateway/JobManager URLs. |
+| `Flink: Show Job Details` | Open Flink Dashboard for a job. |
+| `Flink: Stop Job` | Cancel a running job. |
+| `Flink: Create Session` | Create a new session on the Gateway. |
 
 ## 📝 License
 
 This project is licensed under the [MIT License](LICENSE.md).
-
-For more information, visit the [GitHub Repository](https://github.com/DafaWiratama/apache-flink-sql-workspace-vsix).
