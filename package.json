@@ -4,7 +4,7 @@
   "publisher": "Wiratama",
   "description": "Interactive Apache Flink SQL development environment for VS Code. Write and execute Flink SQL queries in notebooks, explore cluster metadata (catalogs, databases, tables), monitor running jobs and cluster status, and manage your Flink cluster—all within your editor.",
   "icon": "icon-color.png",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "engines": {
     "vscode": "^1.85.0"
   },

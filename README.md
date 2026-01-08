@@ -1,96 +1,124 @@
+# Apache Flink SQL Notebook & Toolkit for VS Code
 
-# Apache Flink SQL Notebook for VS Code
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Apache Flink SQL Notebook** transforms VS Code into a first-class Interactive Development Environment (IDE) for Apache Flink. Write SQL, stream results in real-time, explore cluster metadata, and manage jobs—all without leaving your editor.
+Transform your editor into a powerful **Stream Processing** and **Big Data** workstation. Write, debug, and execute Flink SQL queries in real-time. Manage your Flink clusters, explore catalogs, and monitor jobs without leaving VS Code.
 
----
-
-## ✨ Key Enhancements
-
-Recent updates allow you to do more with your data:
-
-- 📊 **Advanced Visualization**: Client-side **Sorting** and **Filtering** on query results, plus **CSV/JSON Export**.
-- 🧠 **Intelligent Completion**: Context-aware **Column Auto-Completion** that understands table aliases and joins.
-- ⚡ **Productivity Snippets**: Built-in templates for Kafka tables, Window TVFs, and DataGen.
-- 🛠️ **Interactive Explorer**: Click to **Script SELECT** queries or **Copy DDL** statements instantly.
+Designed for **Data Engineers**, **Platform Engineers**, and **Data Scientists** working with **Apache Flink**, **Kafka**, and **Real-time Analytics**.
 
 ---
 
-## 🚀 Features
+## ✨ Why this Extension? (Key Features)
 
-### 📓 Interactive Notebooks
-- **`.flinksql` Support**: Create notebook files to organize your queries.
-- **Streaming Results**: Run queries and watch results stream in real-time.
-- **Pause & Resume**: Control the flow of streaming data.
-- **Result Grid**:
-    - **Sort**: Click headers to sort by column.
-    - **Filter**: Type to filter rows instantly.
-    - **Export**: Download results as CSV or copy as JSON.
+- **📓 Interactive Notebooks**:
+  - Run Flink SQL interactively in `.fsqlnb` or `.flinksql` files.
+  - **Live Streaming Results**: Watch your streaming data flow in real-time within the editor.
+  - **Sorting & Filtering**: Client-side analysis of result sets. Export to CSV/JSON.
 
-### 🔍 Cluster Explorer
-Navigate your Flink ecosystem from the sidebar:
-- **Metadata Browser**: Drill down into Catalogs, Databases, and Tables.
-- **Quick Actions**:
-    - Right-click or use the **Details View** to interact with objects.
-    - **Script SELECT**: Inserts a `SELECT * ... LIMIT 100` snippet.
-    - **Copy DDL**: Copies the `CREATE TABLE` statement to your clipboard.
+- **⚡ Intelligent Coding**:
+  - **Context-Aware Autocomplete**: Smart suggestions for Tables, Views, Columns, and Functions.
+  - **Snippet Library**: Built-in templates for Kafka Connectors, DataGen, Window TVFs (`TUMBLE`, `HOP`), and more.
+  - **Syntax Highlighting**: Dedicated support for Flink SQL dialect.
 
-### 🛡️ System Monitoring
-- **Running Jobs**: View active jobs, their status, and duration.
-- **Job History**: Access past job executions.
-- **One-Click Cancel**: Stop running jobs directly from the sidebar.
-- **Task Manager Details**: Monitor cluster health, slots, and resource usage.
+- **🔍 Cluster Explorer**:
+  - **Metadata Browser**: Navigate Catalogs, Databases, Tables, and Views.
+  - **One-Click Actions**: Right-click to "Script SELECT" or "Copy CREATE TABLE" statements.
+  - **View Schema**: Instantly check column types and table properties.
 
-### ⚡ Developer Experience
-- **Auto-Completion**:
-    - Keywords, Functions, Catalogs, Databases, Tables.
-    - **Smart Column Suggestions**: Detects tables in `FROM/JOIN` clauses (including aliases like `t.col`) to suggest relevant columns.
-- **Code Snippets**: Type `flink-` to access templates:
-    - `flink-create-kafka`: Kafka Source/Sink table.
-    - `flink-create-print`: Print sink.
-    - `flink-window-tumble` / `flink-window-hop`: Window aggregations.
-
-### 🔌 Connectivity
-- **Auto-Configuration**: Prompts to configure connection on first use.
-- **Session Management**: Create and switch between Flink sessions easily.
+- **🛡️ Job & System Management**:
+  - **Job Monitoring**: View Running and Completed jobs.
+  - **Control**: Cancel jobs directly from the sidebar.
+  - **Deep Dive**: Open the Flink Dashboard for specific jobs with a single click.
+  - **System Health**: Monitor TaskManagers, Slots, and resource usage.
 
 ---
 
-## 🛠️ Getting Started
+## 🚀 Zero to Hero: Quick Start Guide
 
-### Prerequisites
-1.  **VS Code**: Version `1.85.0` or higher.
-2.  **Apache Flink Cluster**: A running Flink cluster.
-3.  **Flink SQL Gateway**: Must be running and accessible (default port `8083`).
+ Follow these steps to run your first Flink SQL streaming job in minutes.
 
-### Installation
-1.  Install the extension from the Marketplace.
-2.  Open or create a `.flinksql` file.
-3.  **Configure Connection**: Click the "Configure Connection" icon in the **Flink Explorer** title bar or use the Command Palette.
+### 1. Prerequisites
+- **VS Code**: v1.85+
+- **Apache Flink Cluster**: Running (v1.16+ recommended).
+- **Flink SQL Gateway**: Must be running (default port `8083`).
 
-### Configuration
-Update these settings in `.vscode/settings.json` or Global Settings:
+### 2. Setup
+1.  Install **Flink SQL Toolkit** from the VS Code Marketplace.
+2.  Open VS Code and navigate to the **Flink Activity Bar** (Flink Logo).
+3.  Click **"Configure Connection"** (or run command `Flink: Configure Connection`).
+    -   **Gateway URL**: `http://localhost:8083`
+    -   **JobManager URL**: `http://localhost:8081`
+
+### 3. "Hello World" Streaming Job
+Create a new file named `demo.fsqlnb` or `demo.flinksql` and paste the following:
+
+```sql
+-- 1. Create a Source Table (Data Generator)
+CREATE TABLE orders (
+    order_id BIGINT,
+    price DECIMAL(10, 2),
+    buyer STRING,
+    order_time TIMESTAMP(3)
+) WITH (
+    'connector' = 'datagen',
+    'rows-per-second' = '1'
+);
+
+-- 2. Create a Sink Table (Print to Console/Log)
+CREATE TABLE print_sink (
+    order_id BIGINT,
+    price DECIMAL(10, 2),
+    buyer STRING
+) WITH (
+    'connector' = 'print'
+);
+
+-- 3. Run a Continuous Query
+INSERT INTO print_sink
+SELECT order_id, price, buyer
+FROM orders
+WHERE price > 10;
+```
+
+**Run it!** Click the "Run" lens (or `Ctrl+Enter`). You will see the job submitted and results streaming (for SELECT queries) or job ID returned (for INSERT).
+
+---
+
+## ⚙️ Configuration
+
+You can customize the extension via `.vscode/settings.json`:
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
-| `flink.gatewayUrl` | `http://localhost:8083` | URL of the Flink SQL Gateway REST API. |
-| `flink.jobManagerUrl` | `http://localhost:8081` | URL of the Flink JobManager Dashboard (for monitoring). |
-| `flink.sessionName` | `default` | Name of the Flink Session to use. |
+| `flink.gatewayUrl` | `http://localhost:8083` | Flink SQL Gateway REST Endpoint. |
+| `flink.jobManagerUrl` | `http://localhost:8081` | Flink JobManager Dashboard URL. |
+| `flink.sessionName` | `default` | Default session name for the gateway. |
 
 ---
 
-## ⌨️ Useful Commands
+## 💡 Pro Tips
 
-| Command | Description |
-| :--- | :--- |
-| `Flink: Refresh` | Refreshes Explorer and Job lists. |
-| `Flink: Configure Connection` | Update Gateway/JobManager URLs. |
-| `Flink: Show Job Details` | Open Flink Dashboard for a job. |
-| `Flink: Stop Job` | Cancel a running job. |
-| `Flink: Create Session` | Create a new session on the Gateway. |
+*   **Invalid Session?** No problem. The extension automatically recovers invalid sessions by creating a new `default` session, so you never lose your flow.
+*   **Column Autocomplete**: Type `SELECT t.` to see column suggestions for table aliased as `t`.
+*   **Drag & Drop**: Drag a table from the Explorer into your editor to insert its full name.
 
-## 📝 License
+---
 
-This project is licensed under the [MIT License](LICENSE.md).
+## 🔧 Troubleshooting
+
+**"Session is invalid" loop?**
+- Ensure your Flink SQL Gateway is running and accessible.
+- Check logs: `View > Output > Flink SQL Toolkit`.
+
+**"Failed to fetch metadata"?**
+- Verify the `gatewayUrl` in settings.
+- Ensure Flink is listening on the correct host/port (docker containers might need host networking or port mapping).
+
+---
+
+## 🤝 Contributing & Support
+
+Found a bug? Want a feature?
+[Open an Issue on GitHub](https://github.com/DafaWiratama/flink-sql-toolkit/issues)
+
+**License**: MIT
