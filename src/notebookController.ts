@@ -88,11 +88,26 @@ export class FlinkNotebookController {
                 try {
                     const { statementHandle } = await client.executeStatement(sessionHandle, statement);
 
-                    // Poll for result (simplified)
-                    await new Promise(r => setTimeout(r, 500));
-
-                    // Fetch first page of results
+                    // Wait for results to be ready (poll for NOT_READY -> PAYLOAD/EOS)
                     let resultData = await client.fetchResults(sessionHandle, statementHandle, 0);
+                    let readyRetries = 0;
+                    const maxReadyRetries = 60; // Wait up to 30 seconds (500ms * 60)
+
+                    while (resultData.resultType === 'NOT_READY' && readyRetries < maxReadyRetries) {
+                        if (execution.token.isCancellationRequested) {
+                            Logger.info('[Flink] Cancellation requested while waiting for results');
+                            break;
+                        }
+                        await new Promise(r => setTimeout(r, 500));
+                        resultData = await client.fetchResults(sessionHandle, statementHandle, 0);
+                        readyRetries++;
+                        Logger.info(`[Flink] Waiting for results... (attempt ${readyRetries}, type: ${resultData.resultType})`);
+                    }
+
+                    if (resultData.resultType === 'NOT_READY') {
+                        throw new Error('Query timed out waiting for results. The job may still be running in the background.');
+                    }
+
                     let allResults: any[] = [...resultData.results];
                     const columns = resultData.columns;
 
@@ -113,11 +128,6 @@ export class FlinkNotebookController {
 
                         items.push(vscode.NotebookCellOutputItem.json(dataResource, 'application/x-flink-table'));
 
-                        // Fallback for non-renderer clients
-                        // if (columns && columns.length > 0) {
-                        //    items.push(vscode.NotebookCellOutputItem.text(JSON.stringify(rows, null, 2), 'text/plain'));
-                        // }
-
                         return new vscode.NotebookCellOutput(items);
                     };
 
@@ -125,8 +135,60 @@ export class FlinkNotebookController {
                     const isStreaming = resultData.isQueryResult === true;
                     const jobId = resultData.jobID; // Track job ID for cancellation
 
-                    // Display initial results with streaming indicator if applicable
+                    // Display initial results
                     await execution.replaceOutput([createOutput(allResults, isStreaming ? { isStreaming: true, isComplete: false } : undefined)]);
+
+                    // For non-streaming batch queries, we may still need to poll until EOS
+                    if (!isStreaming && resultData.resultType !== 'EOS') {
+                        Logger.info(`[Flink] Non-streaming query with resultType=${resultData.resultType}, polling for completion...`);
+                        let token = resultData.nextResultToken ?? 1;
+                        let batchRetries = 0;
+                        const maxBatchRetries = 120; // Up to 60 seconds
+
+                        while (resultData.resultType !== 'EOS' && batchRetries < maxBatchRetries) {
+                            if (execution.token.isCancellationRequested) {
+                                Logger.info('[Flink] Cancellation requested during batch polling');
+                                await client.cancelOperation(sessionHandle, statementHandle, jobId);
+                                break;
+                            }
+                            await new Promise(r => setTimeout(r, 500));
+
+                            try {
+                                const nextData = await client.fetchResults(sessionHandle, statementHandle, token);
+
+                                if (nextData.results && nextData.results.length > 0) {
+                                    allResults.push(...nextData.results);
+                                    await execution.replaceOutput([createOutput(allResults)]);
+                                }
+
+                                Logger.info(`[Flink Batch Poll ${batchRetries}] Token: ${token}, ResultType: ${nextData.resultType}, Results: ${nextData.results.length}`);
+
+                                if (nextData.resultType === 'EOS') {
+                                    Logger.info('[Flink] Batch query completed (EOS)');
+                                    resultData = nextData;
+                                    break;
+                                }
+
+                                if (nextData.resultType === 'ERROR') {
+                                    throw new Error('Flink batch operation failed with ERROR status.');
+                                }
+
+                                token = nextData.nextResultToken ?? token + 1;
+                                resultData = nextData;
+                            } catch (pollError: any) {
+                                Logger.error('[Flink Batch Poll Error]', pollError.message);
+                                batchRetries++;
+                                if (batchRetries >= 5) {
+                                    throw pollError;
+                                }
+                            }
+
+                            batchRetries++;
+                        }
+
+                        // Show final results
+                        await execution.replaceOutput([createOutput(allResults)]);
+                    }
 
                     if (isStreaming) {
 

@@ -163,7 +163,7 @@ export class FlinkGatewayClient {
             results: result.results ? result.results.data : [],
             columns: result.results ? result.results.columns : [],
             resultKind: result.resultKind,
-            resultType: result.resultType || 'PAYLOAD',
+            resultType: result.resultType || (result.results?.data?.length > 0 ? 'PAYLOAD' : 'NOT_READY'),
             jobID: result.jobID,
             nextResultUri: result.nextResultUri,
             isQueryResult: result.isQueryResult || false,
