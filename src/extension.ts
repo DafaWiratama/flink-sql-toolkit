@@ -1,5 +1,4 @@
 // The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { Logger } from './utils/logger';
 import { WebviewHelper } from './utils/webviewHelper';
@@ -13,55 +12,115 @@ import { FlinkCatalogProvider } from './catalogProvider';
 import { FlinkStatusBar } from './statusBar';
 import { FlinkSqlCompletionItemProvider } from './completionProvider';
 import { FlinkObjectDetailsProvider } from './objectDetailsProvider';
+import { FlinkConnectionsProvider, ConnectionTreeItem } from './connectionsProvider';
+import { FlinkSessionsProvider, SessionTreeItem } from './sessionsProvider';
+import { ConnectionManager } from './connectionManager';
 
 // This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
 	// Initialize Logger
 	Logger.initialize('Apache Flink');
-
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
 	Logger.info('Congratulations, your extension "apache-flink-vscode-extension" is now active!');
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('apache-flink-vscode-extension.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from apache-flink-vscode-extension!');
-	});
+	// Initialize Connection Manager (handles saved connections)
+	const connectionManager = new ConnectionManager(context);
+	context.subscriptions.push(connectionManager);
 
+	// Notebook Serializer
 	const notebookSerializer = vscode.workspace.registerNotebookSerializer(
 		'flink-sql-notebook',
 		new FlinkSqlNotebookSerializer()
 	);
 
-	const config = vscode.workspace.getConfiguration('flink');
-	const gatewayUrl = config.get<string>('gatewayUrl', 'http://localhost:8083');
-	const jobManagerUrl = config.get<string>('jobManagerUrl', 'http://localhost:8081');
+	// Session Manager (sessions are linked to connections)
+	const sessionManager = new SessionManager(context, connectionManager);
 
-	const client = new FlinkGatewayClient(gatewayUrl, jobManagerUrl);
-	const sessionManager = new SessionManager(context, client);
+	// Helper to get client for active session
+	const getActiveClient = (): FlinkGatewayClient => {
+		const activeHandle = sessionManager.getCurrentSessionHandle();
+		if (activeHandle) {
+			const client = sessionManager.getClientForSession(activeHandle);
+			if (client) { return client; }
+		}
+		// Fallback to first connection
+		const conn = connectionManager.getFirstConnection();
+		if (conn) {
+			return new FlinkGatewayClient(conn.gatewayUrl, conn.jobManagerUrl);
+		}
+		return new FlinkGatewayClient('http://localhost:8083', 'http://localhost:8081');
+	};
 
-	const controller = new FlinkNotebookController(context, sessionManager);
-
-	const statusBar = new FlinkStatusBar(client);
+	// Status Bar (uses active session's connection)
+	const statusBar = new FlinkStatusBar(getActiveClient());
 	context.subscriptions.push(statusBar);
 
-	// Intelligent Refresh
-	controller.onDidExecute(() => {
-		runningJobsProvider.refresh();
-		historyJobsProvider.refresh();
-		catalogProvider.refresh();
-		tmsProvider.refresh();
+	// Update status bar when session changes
+	sessionManager.onDidChangeActiveSession(() => {
+		statusBar.updateClient(getActiveClient());
 		statusBar.update();
 	});
 
-	// Register Flink Jobs sidebar
+	// Track all notebook controllers (one per session)
+	const controllers: Map<string, FlinkNotebookController> = new Map();
 
+	// Function to create controllers for all sessions
+	const createControllersForSessions = () => {
+		const sessions = sessionManager.getAllSessions();
+
+		// Create controllers for new sessions
+		for (const session of sessions) {
+			if (!controllers.has(session.handle)) {
+				const controller = new FlinkNotebookController(context, connectionManager, sessionManager, session);
+				controllers.set(session.handle, controller);
+				context.subscriptions.push(controller);
+
+				// Wire up refresh on execute
+				controller.onDidExecute(() => {
+					runningJobsProvider.refresh();
+					historyJobsProvider.refresh();
+					catalogProvider.refresh();
+					tmsProvider.refresh();
+					statusBar.update();
+					connectionsProvider.refresh();
+					sessionsProvider.refresh();
+				});
+
+				Logger.info(`[Extension] Created controller for session: ${session.name}`);
+			}
+		}
+
+		// Remove controllers for deleted sessions
+		const sessionHandles = new Set(sessions.map(s => s.handle));
+		for (const [handle, controller] of controllers.entries()) {
+			if (!sessionHandles.has(handle)) {
+				controller.dispose();
+				controllers.delete(handle);
+				Logger.info(`[Extension] Disposed controller for deleted session`);
+			}
+		}
+	};
+
+	// Initial controller creation
+	createControllersForSessions();
+
+	// Listen for session changes to create/dispose controllers
+	sessionManager.onDidChangeSessions(() => {
+		createControllersForSessions();
+	});
+
+	// Get URLs for providers (use first connection or defaults)
+	const getDefaultUrls = () => {
+		const conn = connectionManager.getFirstConnection();
+		return {
+			gatewayUrl: conn?.gatewayUrl || 'http://localhost:8083',
+			jobManagerUrl: conn?.jobManagerUrl || 'http://localhost:8081'
+		};
+	};
+
+	const { gatewayUrl, jobManagerUrl } = getDefaultUrls();
+
+	// Register Flink Jobs sidebar
 	const runningJobsProvider = new FlinkJobsProvider(gatewayUrl, jobManagerUrl, 'RUNNING');
 	const runningJobsTreeView = vscode.window.createTreeView('flinkRunningJobs', {
 		treeDataProvider: runningJobsProvider
@@ -88,8 +147,34 @@ export function activate(context: vscode.ExtensionContext) {
 	const catalogProvider = new FlinkCatalogProvider(context, gatewayUrl, jobManagerUrl, sessionManager);
 	vscode.window.registerTreeDataProvider('flinkExplorer', catalogProvider);
 
-	const objectDetailsProvider = new FlinkObjectDetailsProvider(client, sessionManager);
+	const objectDetailsProvider = new FlinkObjectDetailsProvider(getActiveClient(), sessionManager);
 	vscode.window.registerWebviewViewProvider('flinkObjectDetails', objectDetailsProvider);
+
+	// Update providers when active session changes (different connection)
+	sessionManager.onDidChangeActiveSession((handle) => {
+		const conn = sessionManager.getConnectionForSession(handle);
+		if (conn) {
+			const client = new FlinkGatewayClient(conn.gatewayUrl, conn.jobManagerUrl);
+			runningJobsProvider.updateConnection(conn.gatewayUrl, conn.jobManagerUrl);
+			historyJobsProvider.updateConnection(conn.gatewayUrl, conn.jobManagerUrl);
+			tmsProvider.updateConnection(conn.gatewayUrl, conn.jobManagerUrl);
+			catalogProvider.updateConnection(conn.gatewayUrl, conn.jobManagerUrl);
+			objectDetailsProvider.updateClient(client);
+			sqlCompletionProvider.updateClient(client);
+		}
+	});
+
+	// Register Connections sidebar
+	const connectionsProvider = new FlinkConnectionsProvider(connectionManager);
+	const connectionsTreeView = vscode.window.createTreeView('flinkConnections', {
+		treeDataProvider: connectionsProvider
+	});
+
+	// Register Sessions sidebar
+	const sessionsProvider = new FlinkSessionsProvider(sessionManager, connectionManager);
+	const sessionsTreeView = vscode.window.createTreeView('flinkSessions', {
+		treeDataProvider: sessionsProvider
+	});
 
 	const refreshExplorerCommand = vscode.commands.registerCommand('flinkExplorer.refresh', () => {
 		catalogProvider.refresh();
@@ -125,66 +210,94 @@ export function activate(context: vscode.ExtensionContext) {
 		tmsProvider.refresh();
 	});
 
-	const configureCommand = vscode.commands.registerCommand('flink.configureConnection', async () => {
-		const config = vscode.workspace.getConfiguration('flink');
-		const currentGateway = config.get<string>('gatewayUrl', 'http://localhost:8083');
-		const currentJobManager = config.get<string>('jobManagerUrl', 'http://localhost:8081');
-
-		const gatewayUrl = await vscode.window.showInputBox({
-			title: 'Flink SQL Gateway URL',
-			prompt: 'Enter the URL of the Flink SQL Gateway',
-			value: currentGateway,
-			ignoreFocusOut: true
-		});
-		if (gatewayUrl === undefined) { return; }
-
-		const jobManagerUrl = await vscode.window.showInputBox({
-			title: 'Flink JobManager URL',
-			prompt: 'Enter the URL of the Flink JobManager (Dashboard)',
-			value: currentJobManager,
-			ignoreFocusOut: true
-		});
-		if (jobManagerUrl === undefined) { return; }
-
-		const currentSessionName = config.get<string>('sessionName', 'default');
-		const sessionName = await vscode.window.showInputBox({
-			title: 'Default Session Name',
-			prompt: 'Enter the name for the default Flink Session',
-			value: currentSessionName,
-			ignoreFocusOut: true
-		});
-		if (sessionName === undefined) { return; }
-
-		await config.update('gatewayUrl', gatewayUrl, vscode.ConfigurationTarget.Global);
-		await config.update('jobManagerUrl', jobManagerUrl, vscode.ConfigurationTarget.Global);
-		await config.update('sessionName', sessionName, vscode.ConfigurationTarget.Global);
-
-		runningJobsProvider.updateConnection(gatewayUrl, jobManagerUrl);
-		historyJobsProvider.updateConnection(gatewayUrl, jobManagerUrl);
-		tmsProvider.updateConnection(gatewayUrl, jobManagerUrl);
-		catalogProvider.updateConnection(gatewayUrl, jobManagerUrl);
-
-		const newClient = new FlinkGatewayClient(gatewayUrl, jobManagerUrl);
-		sessionManager.updateClient(newClient);
-		sqlCompletionProvider.updateClient(newClient);
-
-		controller.resetConnection();
-
-		vscode.window.showInformationMessage('Flink connection settings updated successfully.');
+	// Connection management commands
+	const refreshConnectionsCommand = vscode.commands.registerCommand('flinkConnections.refresh', () => {
+		connectionsProvider.refresh();
 	});
 
-	const sqlCompletionProvider = new FlinkSqlCompletionItemProvider(client, sessionManager);
-	const completionDisposable = vscode.languages.registerCompletionItemProvider('apache-flink', sqlCompletionProvider, '.', ' '); // Trigger on dot and space
+	const addConnectionCommand = vscode.commands.registerCommand('flinkConnections.add', async () => {
+		await connectionManager.promptAddConnection();
+	});
 
-	context.subscriptions.push(disposable, notebookSerializer, controller, runningJobsTreeView, historyJobsTreeView, refreshRunningCommand, refreshHistoryCommand, cancelJobCommand, refreshTMCommand, refreshExplorerCommand, selectDatabaseCommand, selectCatalogCommand, configureCommand, createSessionCommand, selectSessionCommand, sessionManager, completionDisposable);
+	const editConnectionCommand = vscode.commands.registerCommand('flinkConnections.edit', async (item: ConnectionTreeItem) => {
+		if (item?.connection) {
+			await connectionManager.promptEditConnection(item.connection.id);
+		}
+	});
+
+	const removeConnectionCommand = vscode.commands.registerCommand('flinkConnections.remove', async (item: ConnectionTreeItem) => {
+		if (item?.connection) {
+			await connectionManager.promptRemoveConnection(item.connection.id);
+		}
+	});
+
+	// Session management commands
+	const refreshSessionsCommand = vscode.commands.registerCommand('flinkSessions.refresh', () => {
+		sessionsProvider.refresh();
+	});
+
+	const createSessionTreeCommand = vscode.commands.registerCommand('flinkSessions.create', async () => {
+		await sessionManager.createSession();
+	});
+
+	const setActiveSessionCommand = vscode.commands.registerCommand('flinkSessions.setActive', async (item: SessionTreeItem) => {
+		if (item?.session) {
+			await sessionManager.setActiveSession(item.session.handle);
+			vscode.window.showInformationMessage(`Switched to session: ${item.session.name}`);
+		}
+	});
+
+	const removeSessionCommand = vscode.commands.registerCommand('flinkSessions.remove', async (item: SessionTreeItem) => {
+		if (item?.session) {
+			await sessionManager.removeSession(item.session.handle);
+		}
+	});
+
+	// Legacy configure command (for backwards compatibility)
+	const configureCommand = vscode.commands.registerCommand('flink.configureConnection', async () => {
+		// Open the add connection dialog
+		await connectionManager.promptAddConnection();
+	});
+
+	// SQL Completion Provider
+	const sqlCompletionProvider = new FlinkSqlCompletionItemProvider(getActiveClient(), sessionManager);
+	const completionDisposable = vscode.languages.registerCompletionItemProvider('apache-flink', sqlCompletionProvider, '.', ' ');
+
+	context.subscriptions.push(
+		notebookSerializer,
+		runningJobsTreeView,
+		historyJobsTreeView,
+		connectionsTreeView,
+		sessionsTreeView,
+		refreshRunningCommand,
+		refreshHistoryCommand,
+		cancelJobCommand,
+		refreshTMCommand,
+		refreshConnectionsCommand,
+		addConnectionCommand,
+		editConnectionCommand,
+		removeConnectionCommand,
+		refreshSessionsCommand,
+		createSessionTreeCommand,
+		setActiveSessionCommand,
+		removeSessionCommand,
+		refreshExplorerCommand,
+		selectDatabaseCommand,
+		selectCatalogCommand,
+		configureCommand,
+		createSessionCommand,
+		selectSessionCommand,
+		sessionManager,
+		completionDisposable
+	);
 
 	// Command: Show Job Detail
 	context.subscriptions.push(vscode.commands.registerCommand('flink.showJobDetail', async (jobId: string, status?: string) => {
 		if (!jobId) { return; }
 
 		let jobStatus = status;
+		const client = getActiveClient();
 		if (!jobStatus) {
-			// Fallback: Fetch details if status not passed
 			try {
 				const details = await client.getJobDetails(jobId);
 				if (details) {
@@ -195,18 +308,19 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}
 
-		// Default to 'running' if still unknown
 		const safeStatus = (jobStatus || 'running').toLowerCase();
 
-		const config = vscode.workspace.getConfiguration('flink');
-		const jobManagerUrl = config.get<string>('jobManagerUrl', 'http://localhost:8081');
+		// Get JobManager URL from active session's connection
+		const activeHandle = sessionManager.getCurrentSessionHandle();
+		let jmUrl = 'http://localhost:8081';
+		if (activeHandle) {
+			const conn = sessionManager.getConnectionForSession(activeHandle);
+			if (conn) { jmUrl = conn.jobManagerUrl; }
+		}
 
-		// Clean up the URL to avoid double slashes
-		const cleanBaseUrl = jobManagerUrl.replace(/\/$/, '');
-		// User requested format: /#/job/running/<id>/overview
+		const cleanBaseUrl = jmUrl.replace(/\/$/, '');
 		const url = `${cleanBaseUrl}/#/job/${safeStatus}/${jobId}/overview`;
 
-		// Create Webview Panel
 		const panel = vscode.window.createWebviewPanel(
 			'flinkJobDetail',
 			`Job: ${jobId}`,
@@ -218,7 +332,6 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		);
 
-		// Allow localhost content in Webview
 		panel.webview.html = WebviewHelper.getFrameHtml(url);
 	}));
 }

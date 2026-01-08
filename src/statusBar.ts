@@ -13,6 +13,11 @@ export class FlinkStatusBar implements vscode.Disposable {
         this.startPolling();
     }
 
+    updateClient(client: FlinkGatewayClient) {
+        this.client = client;
+        this.update();
+    }
+
     startPolling() {
         this.timer = setInterval(() => this.update(), 10000); // Poll every 10s
     }

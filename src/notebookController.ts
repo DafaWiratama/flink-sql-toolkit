@@ -1,22 +1,34 @@
 import * as vscode from 'vscode';
 import { FlinkGatewayClient } from './flinkClient';
-import { SessionManager } from './sessionManager';
+import { SessionManager, SessionInfo } from './sessionManager';
+import { ConnectionManager } from './connectionManager';
 import { Logger } from './utils/logger';
 
-export class FlinkNotebookController {
-    readonly controllerId = 'flink-sql-notebook-controller';
+export class FlinkNotebookController implements vscode.Disposable {
+    readonly controllerId: string;
     readonly notebookType = 'flink-sql-notebook';
-    readonly label = 'Flink SQL Gateway';
+    readonly label: string;
     readonly supportedLanguages = ['apache-flink', 'sql'];
 
     private readonly _controller: vscode.NotebookController;
     private _executionOrder = 0;
-    private _client: FlinkGatewayClient | undefined;
 
     private readonly _onDidExecute = new vscode.EventEmitter<void>();
     public readonly onDidExecute = this._onDidExecute.event;
 
-    constructor(private context: vscode.ExtensionContext, private sessionManager: SessionManager) {
+    constructor(
+        private context: vscode.ExtensionContext,
+        private connectionManager: ConnectionManager,
+        private sessionManager: SessionManager,
+        private session: SessionInfo
+    ) {
+        // Get connection name for label
+        const conn = connectionManager.getConnection(session.connectionId);
+        const connName = conn?.name || 'Unknown';
+
+        this.controllerId = `flink-sql-notebook-${session.handle}`;
+        this.label = `Flink: ${session.name} @ ${connName}`;
+
         this._controller = vscode.notebooks.createNotebookController(
             this.controllerId,
             this.notebookType,
@@ -26,23 +38,27 @@ export class FlinkNotebookController {
         this._controller.supportedLanguages = this.supportedLanguages;
         this._controller.supportsExecutionOrder = true;
         this._controller.executeHandler = this._execute.bind(this);
+
+        // Show connection info in description
+        this._controller.description = conn?.gatewayUrl || 'No connection';
     }
 
     dispose() {
         this._controller.dispose();
+        this._onDidExecute.dispose();
     }
 
-    resetConnection() {
-        this._client = undefined;
+    getSession(): SessionInfo {
+        return this.session;
     }
 
     private getClient(): FlinkGatewayClient {
-        if (!this._client) {
-            const config = vscode.workspace.getConfiguration('flink');
-            const gatewayUrl = config.get<string>('gatewayUrl', 'http://localhost:8083');
-            this._client = new FlinkGatewayClient(gatewayUrl);
+        // Get the client from the session's connection
+        const client = this.sessionManager.getClientForSession(this.session.handle);
+        if (!client) {
+            throw new Error(`No connection found for session ${this.session.name}`);
         }
-        return this._client;
+        return client;
     }
 
     private async _execute(
@@ -58,18 +74,17 @@ export class FlinkNotebookController {
     private async _doExecution(cell: vscode.NotebookCell, notebook: vscode.NotebookDocument): Promise<void> {
         const execution = this._controller.createNotebookCellExecution(cell);
         execution.executionOrder = ++this._executionOrder;
-        execution.start(Date.now()); // Keep running time
+        execution.start(Date.now());
         let hasCreateStatement = false;
 
         try {
             const client = this.getClient();
-            const sessionHandle = await this._getSession(client, notebook);
+            // Use this controller's session handle directly
+            const sessionHandle = this.session.handle;
 
             const sql = cell.document.getText();
 
             // Split by semicolon and filter empty statements
-            // Note: This is a simple split and might break if semicolons are inside strings.
-            // For a robust implementation, a proper SQL parser/tokenizer is needed.
             const statements = sql.split(';')
                 .map(s => s.trim())
                 .filter(s => s.length > 0);
@@ -91,7 +106,7 @@ export class FlinkNotebookController {
                     // Wait for results to be ready (poll for NOT_READY -> PAYLOAD/EOS)
                     let resultData = await client.fetchResults(sessionHandle, statementHandle, 0);
                     let readyRetries = 0;
-                    const maxReadyRetries = 60; // Wait up to 30 seconds (500ms * 60)
+                    const maxReadyRetries = 60;
 
                     while (resultData.resultType === 'NOT_READY' && readyRetries < maxReadyRetries) {
                         if (execution.token.isCancellationRequested) {
@@ -111,7 +126,6 @@ export class FlinkNotebookController {
                     let allResults: any[] = [...resultData.results];
                     const columns = resultData.columns;
 
-                    // Helper to create data resource output
                     const createOutput = (rows: any[], streamingInfo?: { isStreaming: boolean; isComplete?: boolean; offset?: number }) => {
                         const items: vscode.NotebookCellOutputItem[] = [];
 
@@ -127,23 +141,20 @@ export class FlinkNotebookController {
                         };
 
                         items.push(vscode.NotebookCellOutputItem.json(dataResource, 'application/x-flink-table'));
-
                         return new vscode.NotebookCellOutput(items);
                     };
 
-                    // Check if this is a streaming query
                     const isStreaming = resultData.isQueryResult === true;
-                    const jobId = resultData.jobID; // Track job ID for cancellation
+                    const jobId = resultData.jobID;
 
-                    // Display initial results
                     await execution.replaceOutput([createOutput(allResults, isStreaming ? { isStreaming: true, isComplete: false } : undefined)]);
 
-                    // For non-streaming batch queries, we may still need to poll until EOS
+                    // For non-streaming batch queries, poll until EOS
                     if (!isStreaming && resultData.resultType !== 'EOS') {
                         Logger.info(`[Flink] Non-streaming query with resultType=${resultData.resultType}, polling for completion...`);
                         let token = resultData.nextResultToken ?? 1;
                         let batchRetries = 0;
-                        const maxBatchRetries = 120; // Up to 60 seconds
+                        const maxBatchRetries = 120;
 
                         while (resultData.resultType !== 'EOS' && batchRetries < maxBatchRetries) {
                             if (execution.token.isCancellationRequested) {
@@ -186,14 +197,12 @@ export class FlinkNotebookController {
                             batchRetries++;
                         }
 
-                        // Show final results
                         await execution.replaceOutput([createOutput(allResults)]);
                     }
 
                     if (isStreaming) {
-
-                        let currentToken = 0; // Start from token 0
-                        const maxPolls = 1000; // Increased safety limits
+                        let currentToken = 0;
+                        const maxPolls = 1000;
                         let pollCount = 0;
                         let consecutiveEmpty = 0;
                         let totalRows = allResults.length;
@@ -206,7 +215,7 @@ export class FlinkNotebookController {
                                 break;
                             }
 
-                            await new Promise(r => setTimeout(r, 1000)); // Poll every second
+                            await new Promise(r => setTimeout(r, 1000));
 
                             try {
                                 currentToken++;
@@ -214,8 +223,7 @@ export class FlinkNotebookController {
 
                                 Logger.info(`[Flink Poll ${pollCount}] Token: ${currentToken}, ResultType: ${nextData.resultType}, Results: ${nextData.results.length}`);
 
-                                // Handle Status
-                                const status = nextData.resultType; // 'PAYLOAD', 'EOS', 'ERROR', etc.
+                                const status = nextData.resultType;
 
                                 if (status === 'ERROR') {
                                     throw new Error('Flink Operation failed with ERROR status.');
@@ -242,20 +250,12 @@ export class FlinkNotebookController {
                                     consecutiveEmpty++;
                                 }
 
-                                // Check for termination states
                                 if (status === 'EOS' || status === 'FINISHED') {
                                     Logger.info('[Flink] Operation FINISHED/EOS.');
                                     break;
                                 }
-                                // If INITIALIZED or RUNNING or PAYLOAD, continue.
-
-                                if (consecutiveEmpty >= 10 && status === 'PAYLOAD') {
-                                    // Optional: keep polling but maybe slow down? 
-                                    // For now just continue.
-                                }
 
                             } catch (pollError: any) {
-                                // Fail fast for specific critical errors
                                 const errStr = (pollError.toString() + JSON.stringify(pollError)).toLowerCase();
                                 if (errStr.includes('tablealreadyexistexception')) {
                                     throw pollError;
@@ -267,19 +267,17 @@ export class FlinkNotebookController {
                                 Logger.error('[Flink Poll Error]', pollError.message);
                                 consecutiveEmpty++;
                                 if (consecutiveEmpty >= 5) {
-                                    throw pollError; // Escalating error if persistent
+                                    throw pollError;
                                 }
                             }
 
                             pollCount++;
                         }
 
-                        // Show final result
                         await execution.replaceOutput([createOutput(allResults, { isStreaming: false, isComplete: true })]);
                     }
 
                 } catch (stmtError: any) {
-                    // Check for specific friendly errors (including nested causes)
                     const errStr = ((stmtError.message || '') + (stmtError.stack || '') + JSON.stringify(stmtError)).toLowerCase();
 
                     if (errStr.includes('noresourceavailableexception')) {
@@ -288,8 +286,6 @@ export class FlinkNotebookController {
                                 vscode.NotebookCellOutputItem.error({
                                     name: 'Resource Error',
                                     message: 'No resources available on the Flink cluster. Please check if TaskManagers are registered and have enough slots.',
-                                    // We purposefully hide the original stack trace to keep it clean, 
-                                    // as we strictly identified the issue.
                                     stack: undefined
                                 })
                             ])
@@ -301,24 +297,19 @@ export class FlinkNotebookController {
                             ])
                         ]);
                     } else {
-                        // Default error handling
                         await execution.appendOutput([
                             new vscode.NotebookCellOutput([
                                 vscode.NotebookCellOutputItem.error(stmtError)
                             ])
                         ]);
                     }
-                    throw stmtError; // Re-throw to catch block to end execution
+                    throw stmtError;
                 }
             }
 
             execution.end(true, Date.now());
 
         } catch (err: any) {
-            // Error already appended if it was a statement error
-            // If it was a general error (e.g. session creation), append it
-            // Check if we already appended an error? 
-            // Simplified: just end with false.
             execution.end(false, Date.now());
         } finally {
             if (hasCreateStatement) {
@@ -326,10 +317,4 @@ export class FlinkNotebookController {
             }
         }
     }
-
-    private async _getSession(client: FlinkGatewayClient, notebook: vscode.NotebookDocument): Promise<string> {
-        return await this.sessionManager.getActiveSessionHandle();
-    }
 }
-
-

@@ -1,42 +1,36 @@
 import * as vscode from 'vscode';
 import { FlinkGatewayClient } from './flinkClient';
+import { ConnectionManager, FlinkConnection } from './connectionManager';
+import { Logger } from './utils/logger';
 
-interface SessionInfo {
+export interface SessionInfo {
     name: string;
     handle: string;
+    connectionId: string;  // The connection this session uses
     createdAt: number;
 }
 
 export class SessionManager implements vscode.Disposable {
-    private client: FlinkGatewayClient;
-    private statusBarItem: vscode.StatusBarItem;
     private _sessions: SessionInfo[] = [];
     private _activeSessionHandle: string | undefined;
 
     private _onDidChangeActiveSession = new vscode.EventEmitter<string>();
     readonly onDidChangeActiveSession = this._onDidChangeActiveSession.event;
 
-    constructor(private context: vscode.ExtensionContext, client: FlinkGatewayClient) {
-        this.client = client;
-        this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-        this.statusBarItem.command = 'flink.selectSession';
-        this.context.subscriptions.push(this.statusBarItem);
+    private _onDidChangeSessions = new vscode.EventEmitter<void>();
+    readonly onDidChangeSessions = this._onDidChangeSessions.event;
 
+    constructor(
+        private context: vscode.ExtensionContext,
+        private connectionManager: ConnectionManager
+    ) {
         // Load sessions from storage
         this._loadSessions();
-
-        // Initial update
-        this.updateStatusBar();
-        this.statusBarItem.show();
     }
 
     dispose() {
-        this.statusBarItem.dispose();
         this._onDidChangeActiveSession.dispose();
-    }
-
-    updateClient(client: FlinkGatewayClient) {
-        this.client = client;
+        this._onDidChangeSessions.dispose();
     }
 
     private _loadSessions() {
@@ -57,24 +51,39 @@ export class SessionManager implements vscode.Disposable {
         await this.context.workspaceState.update('flinkActiveSessionHandle', this._activeSessionHandle);
     }
 
-    private updateStatusBar() {
-        if (this._activeSessionHandle) {
-            const session = this._sessions.find(s => s.handle === this._activeSessionHandle);
-            this.statusBarItem.text = `$(pulse) Flink: ${session ? session.name : 'Unknown Session'}`;
-            this.statusBarItem.tooltip = `Active Session Handle: ${this._activeSessionHandle}`;
-        } else {
-            this.statusBarItem.text = '$(pulse) Flink: No Session';
-            this.statusBarItem.tooltip = 'Click to create or select a session';
-        }
+    // Get client for a specific session
+    getClientForSession(sessionHandle: string): FlinkGatewayClient | undefined {
+        const session = this._sessions.find(s => s.handle === sessionHandle);
+        if (!session) { return undefined; }
+
+        const conn = this.connectionManager.getConnection(session.connectionId);
+        if (!conn) { return undefined; }
+
+        return new FlinkGatewayClient(conn.gatewayUrl, conn.jobManagerUrl);
+    }
+
+    // Get connection for a session
+    getConnectionForSession(sessionHandle: string): FlinkConnection | undefined {
+        const session = this._sessions.find(s => s.handle === sessionHandle);
+        if (!session) { return undefined; }
+        return this.connectionManager.getConnection(session.connectionId);
+    }
+
+    // Get all sessions
+    getAllSessions(): SessionInfo[] {
+        return [...this._sessions];
+    }
+
+    // Get session by handle
+    getSession(handle: string): SessionInfo | undefined {
+        return this._sessions.find(s => s.handle === handle);
     }
 
     async getActiveSessionHandle(): Promise<string> {
         if (!this._activeSessionHandle) {
             // Auto-create if none exists
             if (this._sessions.length === 0) {
-                const config = vscode.workspace.getConfiguration('flink');
-                const defaultName = config.get<string>('sessionName', 'default');
-                return await this.createSession(defaultName);
+                return await this.createSession();
             }
 
             // Or prompt user
@@ -86,10 +95,16 @@ export class SessionManager implements vscode.Disposable {
         }
 
         // Validate session is still alive
-        const isValid = await this.client.checkSession(this._activeSessionHandle);
+        const client = this.getClientForSession(this._activeSessionHandle);
+        if (!client) {
+            this._removeSession(this._activeSessionHandle);
+            throw new Error('Session connection no longer exists.');
+        }
+
+        const isValid = await client.checkSession(this._activeSessionHandle);
         if (!isValid) {
             const selection = await vscode.window.showWarningMessage(
-                `Session ${this._activeSessionHandle} is no longer valid.`,
+                `Session is no longer valid.`,
                 'Create New', 'Select Another'
             );
 
@@ -113,7 +128,19 @@ export class SessionManager implements vscode.Disposable {
         return this._activeSessionHandle;
     }
 
-    async createSession(name?: string): Promise<string> {
+    async createSession(name?: string, connectionId?: string): Promise<string> {
+        // First, pick a connection if not provided
+        let connection: FlinkConnection | undefined;
+        if (connectionId) {
+            connection = this.connectionManager.getConnection(connectionId);
+        }
+
+        if (!connection) {
+            connection = await this.connectionManager.pickConnection('Select connection for new session');
+            if (!connection) { return ''; } // Cancelled
+        }
+
+        // Then get session name
         if (!name) {
             name = await vscode.window.showInputBox({
                 prompt: 'Enter session name',
@@ -125,10 +152,13 @@ export class SessionManager implements vscode.Disposable {
         if (!name) { return ''; } // Cancelled
 
         try {
-            const { sessionHandle } = await this.client.createSession(name);
+            const client = new FlinkGatewayClient(connection.gatewayUrl, connection.jobManagerUrl);
+            const { sessionHandle } = await client.createSession(name);
+
             const newSession: SessionInfo = {
                 name,
                 handle: sessionHandle,
+                connectionId: connection.id,
                 createdAt: Date.now()
             };
 
@@ -136,7 +166,9 @@ export class SessionManager implements vscode.Disposable {
             await this._setAsActive(sessionHandle);
             await this._saveSessions();
 
-            vscode.window.showInformationMessage(`Created session '${name}'`);
+            this._onDidChangeSessions.fire();
+
+            vscode.window.showInformationMessage(`Created session '${name}' on ${connection.name}`);
             return sessionHandle;
         } catch (e: any) {
             vscode.window.showErrorMessage(`Failed to create session: ${e.message}`);
@@ -148,11 +180,15 @@ export class SessionManager implements vscode.Disposable {
         const items: vscode.QuickPickItem[] = [
             { label: '$(add) Create New Session', description: 'Create a new Flink session' },
             { label: '', kind: vscode.QuickPickItemKind.Separator },
-            ...this._sessions.map(s => ({
-                label: s.handle === this._activeSessionHandle ? `$(check) ${s.name}` : s.name,
-                description: s.handle,
-                detail: `Created: ${new Date(s.createdAt).toLocaleTimeString()}`
-            }))
+            ...this._sessions.map(s => {
+                const conn = this.connectionManager.getConnection(s.connectionId);
+                return {
+                    label: s.handle === this._activeSessionHandle ? `$(check) ${s.name}` : s.name,
+                    description: `@ ${conn?.name || 'Unknown'}`,
+                    detail: `Created: ${new Date(s.createdAt).toLocaleTimeString()}`,
+                    handle: s.handle
+                };
+            })
         ];
 
         const selected = await vscode.window.showQuickPick(items, {
@@ -166,7 +202,7 @@ export class SessionManager implements vscode.Disposable {
         }
 
         // It's a session item
-        const handle = selected.description;
+        const handle = (selected as any).handle;
         if (handle) {
             await this._setAsActive(handle);
             return handle;
@@ -174,19 +210,53 @@ export class SessionManager implements vscode.Disposable {
         return undefined;
     }
 
+    async setActiveSession(handle: string): Promise<boolean> {
+        const session = this._sessions.find(s => s.handle === handle);
+        if (!session) {
+            return false;
+        }
+        await this._setAsActive(handle);
+        return true;
+    }
+
     private async _setAsActive(handle: string) {
         this._activeSessionHandle = handle;
-        this.updateStatusBar();
         await this._saveSessions();
         this._onDidChangeActiveSession.fire(handle);
+    }
+
+    async removeSession(handle: string): Promise<boolean> {
+        if (this._sessions.length === 1) {
+            vscode.window.showWarningMessage('Cannot remove the last session.');
+            return false;
+        }
+
+        const session = this._sessions.find(s => s.handle === handle);
+        if (!session) {
+            return false;
+        }
+
+        const confirm = await vscode.window.showWarningMessage(
+            `Are you sure you want to remove session "${session.name}"?`,
+            { modal: true },
+            'Remove'
+        );
+
+        if (confirm !== 'Remove') {
+            return false;
+        }
+
+        this._removeSession(handle);
+        vscode.window.showInformationMessage(`Session "${session.name}" removed.`);
+        return true;
     }
 
     private _removeSession(handle: string) {
         this._sessions = this._sessions.filter(s => s.handle !== handle);
         if (this._activeSessionHandle === handle) {
-            this._activeSessionHandle = undefined;
-            this.updateStatusBar();
+            this._activeSessionHandle = this._sessions.length > 0 ? this._sessions[0].handle : undefined;
         }
         this._saveSessions();
+        this._onDidChangeSessions.fire();
     }
 }

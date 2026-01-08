@@ -7,7 +7,6 @@ export class FlinkCatalogProvider implements vscode.TreeDataProvider<CatalogTree
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
     private client: FlinkGatewayClient;
-    private currentCatalog: string | undefined;
     private context: vscode.ExtensionContext;
     private cache = new Map<string, Promise<any>>();
     private sessionManager: SessionManager;
@@ -45,7 +44,7 @@ export class FlinkCatalogProvider implements vscode.TreeDataProvider<CatalogTree
         }
 
         if (element.contextValue === 'root-catalog') {
-            return this.getCatalogChildren(element.label);
+            return this.getCatalogChildren(element.label, element.currentDatabase || 'default_database');
         }
 
         if (element.contextValue === 'group-tables') {
@@ -63,41 +62,44 @@ export class FlinkCatalogProvider implements vscode.TreeDataProvider<CatalogTree
 
     private async getRoot(): Promise<CatalogTreeItem[]> {
         return this.cached('root', async () => {
-            if (!this.currentCatalog) {
-                const catalogs = await this.fetchCatalogs();
-                this.currentCatalog = catalogs.find(c => c === 'default_catalog') || catalogs[0];
-            }
+            try {
+                // Get current catalog and database from session
+                const handle = await this.sessionManager.getActiveSessionHandle();
+                const currentCatalog = await this.fetchCurrentCatalog(handle);
+                const currentDatabase = await this.fetchCurrentDatabase(handle);
 
-            if (!this.currentCatalog) {
+                if (!currentCatalog) {
+                    return [];
+                }
+
+                const item = new CatalogTreeItem(
+                    currentCatalog,
+                    'root-catalog',
+                    vscode.TreeItemCollapsibleState.Expanded,
+                    'server-environment'
+                );
+                item.description = `[${currentDatabase}]`;
+                item.tooltip = `Current Catalog: ${currentCatalog}\nCurrent Database: ${currentDatabase}`;
+                item.id = `cat-${currentCatalog}-${currentDatabase}`;
+                item.currentDatabase = currentDatabase;
+                return [item];
+            } catch (e: any) {
+                vscode.window.showErrorMessage(`Explorer Error: ${e.message}`);
                 return [];
             }
-
-            const selectedDB = this.getSelectedDatabase(this.currentCatalog);
-            const item = new CatalogTreeItem(
-                this.currentCatalog,
-                'root-catalog',
-                vscode.TreeItemCollapsibleState.Expanded,
-                'server-environment'
-            );
-            item.description = `[${selectedDB}]`;
-            item.tooltip = `Active Database: ${selectedDB}`;
-            item.id = `cat-${this.currentCatalog}`;
-            return [item];
         });
     }
 
-    private getCatalogChildren(catalog: string): CatalogTreeItem[] {
-        const selectedDB = this.getSelectedDatabase(catalog);
-
+    private getCatalogChildren(catalog: string, database: string): CatalogTreeItem[] {
         const tableGroup = new CatalogTreeItem('Tables', 'group-tables', vscode.TreeItemCollapsibleState.Expanded, 'list-unordered');
         tableGroup.grandParentName = catalog;
-        tableGroup.parentName = selectedDB;
-        tableGroup.id = `grp-tbl-${catalog}-${selectedDB}`;
+        tableGroup.parentName = database;
+        tableGroup.id = `grp-tbl-${catalog}-${database}`;
 
         const viewGroup = new CatalogTreeItem('Views', 'group-views', vscode.TreeItemCollapsibleState.Expanded, 'layers');
         viewGroup.grandParentName = catalog;
-        viewGroup.parentName = selectedDB;
-        viewGroup.id = `grp-view-${catalog}-${selectedDB}`;
+        viewGroup.parentName = database;
+        viewGroup.id = `grp-view-${catalog}-${database}`;
 
         return [tableGroup, viewGroup];
     }
@@ -136,11 +138,9 @@ export class FlinkCatalogProvider implements vscode.TreeDataProvider<CatalogTree
 
         if (result) {
             try {
-                // Update session context
+                // Update session context using USE CATALOG
                 const handle = await this.sessionManager.getActiveSessionHandle();
                 await this.client.useCatalog(handle, result);
-
-                this.currentCatalog = result;
                 this.refresh();
                 vscode.window.showInformationMessage(`Switched to catalog: ${result}`);
             } catch (e: any) {
@@ -150,37 +150,60 @@ export class FlinkCatalogProvider implements vscode.TreeDataProvider<CatalogTree
     }
 
     async selectDatabase(item?: CatalogTreeItem) {
-        const catalog = item?.label || this.currentCatalog;
-        if (!catalog) {
-            return;
-        }
+        try {
+            const handle = await this.sessionManager.getActiveSessionHandle();
+            const currentCatalog = await this.fetchCurrentCatalog(handle);
 
-        const databases = await this.fetchDatabases(catalog);
-        if (databases.length === 0) {
-            return;
-        }
-
-        const result = await vscode.window.showQuickPick(databases, {
-            placeHolder: `Select Database for ${catalog}`
-        });
-
-        if (result) {
-            try {
-                // Update session context
-                const handle = await this.sessionManager.getActiveSessionHandle();
-                await this.client.useCatalog(handle, catalog);
-                await this.client.useDatabase(handle, result);
-
-                await this.context.workspaceState.update(`flink-explorer.db.${catalog}`, result);
-                this.refresh();
-                vscode.window.showInformationMessage(`Switched to database: ${catalog}.${result}`);
-            } catch (e: any) {
-                vscode.window.showErrorMessage(`Failed to switch database: ${e.message}`);
+            if (!currentCatalog) {
+                vscode.window.showWarningMessage('No catalog selected');
+                return;
             }
+
+            const databases = await this.fetchDatabases(currentCatalog);
+            if (databases.length === 0) {
+                return;
+            }
+
+            const result = await vscode.window.showQuickPick(databases, {
+                placeHolder: `Select Database for ${currentCatalog}`
+            });
+
+            if (result) {
+                // Update session context using USE DATABASE
+                await this.client.useDatabase(handle, result);
+                this.refresh();
+                vscode.window.showInformationMessage(`Switched to database: ${currentCatalog}.${result}`);
+            }
+        } catch (e: any) {
+            vscode.window.showErrorMessage(`Failed to switch database: ${e.message}`);
         }
     }
 
     // --- Data Fetching ---
+
+    private async fetchCurrentCatalog(handle: string): Promise<string> {
+        try {
+            const rows = await this.client.runQuery(handle, 'SHOW CURRENT CATALOG');
+            if (rows.length > 0 && rows[0].fields && rows[0].fields.length > 0) {
+                return rows[0].fields[0];
+            }
+            return 'default_catalog';
+        } catch {
+            return 'default_catalog';
+        }
+    }
+
+    private async fetchCurrentDatabase(handle: string): Promise<string> {
+        try {
+            const rows = await this.client.runQuery(handle, 'SHOW CURRENT DATABASE');
+            if (rows.length > 0 && rows[0].fields && rows[0].fields.length > 0) {
+                return rows[0].fields[0];
+            }
+            return 'default_database';
+        } catch {
+            return 'default_database';
+        }
+    }
 
     private async fetchCatalogs(): Promise<string[]> {
         try {
@@ -216,10 +239,6 @@ export class FlinkCatalogProvider implements vscode.TreeDataProvider<CatalogTree
 
     // --- Helpers ---
 
-    private getSelectedDatabase(catalog: string): string {
-        return this.context.workspaceState.get<string>(`flink-explorer.db.${catalog}`) || 'default_database';
-    }
-
     private async cached<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
         if (!this.cache.has(key)) {
             const promise = fetcher().catch(e => {
@@ -235,6 +254,7 @@ export class FlinkCatalogProvider implements vscode.TreeDataProvider<CatalogTree
 class CatalogTreeItem extends vscode.TreeItem {
     public parentName?: string;
     public grandParentName?: string;
+    public currentDatabase?: string;
 
     constructor(
         public readonly label: string,

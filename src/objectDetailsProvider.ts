@@ -15,6 +15,10 @@ export class FlinkObjectDetailsProvider implements vscode.WebviewViewProvider {
         this.sessionManager = sessionManager;
     }
 
+    updateClient(client: FlinkGatewayClient) {
+        this.client = client;
+    }
+
     private pendingUpdate: { catalog: string; database: string; object: string; type: 'table' | 'view' } | undefined;
 
     resolveWebviewView(

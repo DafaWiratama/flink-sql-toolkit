@@ -60,6 +60,18 @@
     "views": {
       "flink-explorer": [
         {
+          "id": "flinkConnections",
+          "name": "Connections",
+          "icon": "$(plug)",
+          "contextualTitle": "Flink Connections"
+        },
+        {
+          "id": "flinkSessions",
+          "name": "Sessions",
+          "icon": "$(terminal)",
+          "contextualTitle": "Flink Sessions"
+        },
+        {
           "id": "flinkExplorer",
           "name": "Explorer",
           "icon": "$(list-tree)",
@@ -140,6 +152,46 @@
         "command": "flink.configureConnection",
         "title": "Configure Connection",
         "icon": "$(settings)"
+      },
+      {
+        "command": "flinkConnections.refresh",
+        "title": "Refresh Connections",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "flinkConnections.add",
+        "title": "Add Connection",
+        "icon": "$(add)"
+      },
+      {
+        "command": "flinkConnections.edit",
+        "title": "Edit Connection",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "flinkConnections.remove",
+        "title": "Remove Connection",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "flinkSessions.refresh",
+        "title": "Refresh Sessions",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "flinkSessions.create",
+        "title": "Create Session",
+        "icon": "$(add)"
+      },
+      {
+        "command": "flinkSessions.setActive",
+        "title": "Set as Active",
+        "icon": "$(check)"
+      },
+      {
+        "command": "flinkSessions.remove",
+        "title": "Remove Session",
+        "icon": "$(trash)"
       }
     ],
     "menus": {
@@ -178,6 +230,26 @@
           "command": "flink.configureConnection",
           "when": "view == flinkTaskManagers",
           "group": "navigation"
+        },
+        {
+          "command": "flinkConnections.refresh",
+          "when": "view == flinkConnections",
+          "group": "navigation"
+        },
+        {
+          "command": "flinkConnections.add",
+          "when": "view == flinkConnections",
+          "group": "navigation"
+        },
+        {
+          "command": "flinkSessions.refresh",
+          "when": "view == flinkSessions",
+          "group": "navigation"
+        },
+        {
+          "command": "flinkSessions.create",
+          "when": "view == flinkSessions",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -185,6 +257,26 @@
           "command": "flinkJobs.cancel",
           "when": "view == flinkRunningJobs && viewItem == flink-job-running",
           "group": "inline"
+        },
+        {
+          "command": "flinkConnections.edit",
+          "when": "view == flinkConnections && viewItem == connection",
+          "group": "inline@1"
+        },
+        {
+          "command": "flinkConnections.remove",
+          "when": "view == flinkConnections && viewItem == connection",
+          "group": "inline@2"
+        },
+        {
+          "command": "flinkSessions.setActive",
+          "when": "view == flinkSessions && viewItem == session",
+          "group": "inline@1"
+        },
+        {
+          "command": "flinkSessions.remove",
+          "when": "view == flinkSessions && viewItem == session",
+          "group": "inline@2"
         }
       ],
       "view/item/inline": [
@@ -201,7 +293,7 @@
         "displayName": "Flink SQL Notebook",
         "selector": [
           {
-            "filenamePattern": "*.flinksql"
+            "filenamePattern": "*.fsqlnb"
           }
         ]
       }
@@ -225,6 +317,7 @@
           "Flink SQL"
         ],
         "extensions": [
+          ".fsqlnb",
           ".flinksql",
           ".fsql"
         ],
