@@ -103,22 +103,16 @@ export class SessionManager implements vscode.Disposable {
 
         const isValid = await client.checkSession(this._activeSessionHandle);
         if (!isValid) {
-            const selection = await vscode.window.showWarningMessage(
-                `Session is no longer valid.`,
-                'Create New', 'Select Another'
-            );
+            Logger.info(`[SessionManager] Session ${this._activeSessionHandle} is invalid. Auto-recovering...`);
+
+            // Get connection info before removing
+            const session = this.getSession(this._activeSessionHandle);
+            const connectionId = session?.connectionId;
 
             this._removeSession(this._activeSessionHandle);
 
-            if (selection === 'Create New') {
-                return await this.createSession();
-            } else if (selection === 'Select Another') {
-                const newHandle = await this.pickSession();
-                if (!newHandle) { throw new Error('No session selected'); }
-                return newHandle;
-            } else {
-                throw new Error('Session invalid');
-            }
+            // Auto-create 'default' session on the same connection
+            return await this.createSession('default', connectionId);
         }
 
         return this._activeSessionHandle;
