@@ -4,7 +4,7 @@
   "publisher": "Wiratama",
   "description": "Interactive Apache Flink SQL development environment for VS Code. Write and execute Flink SQL queries in notebooks, explore cluster metadata (catalogs, databases, tables), monitor running jobs and cluster status, and manage your Flink cluster—all within your editor.",
   "icon": "icon-color.png",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -192,6 +192,21 @@
         "command": "flinkSessions.remove",
         "title": "Remove Session",
         "icon": "$(trash)"
+      },
+      {
+        "command": "flinkExplorer.useDatabase",
+        "title": "Use Database",
+        "icon": "$(check)"
+      },
+      {
+        "command": "flinkExplorer.refreshDatabase",
+        "title": "Refresh Database",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "flinkExplorer.refreshCatalog",
+        "title": "Refresh Catalog",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
@@ -213,11 +228,6 @@
         },
         {
           "command": "flinkExplorer.selectCatalog",
-          "when": "view == flinkExplorer",
-          "group": "navigation"
-        },
-        {
-          "command": "flinkExplorer.selectDatabase",
           "when": "view == flinkExplorer",
           "group": "navigation"
         },
@@ -277,6 +287,21 @@
           "command": "flinkSessions.remove",
           "when": "view == flinkSessions && viewItem == session",
           "group": "inline@2"
+        },
+        {
+          "command": "flinkExplorer.useDatabase",
+          "when": "view == flinkExplorer && viewItem == database",
+          "group": "inline@1"
+        },
+        {
+          "command": "flinkExplorer.refreshDatabase",
+          "when": "view == flinkExplorer && viewItem == database",
+          "group": "inline@2"
+        },
+        {
+          "command": "flinkExplorer.refreshCatalog",
+          "when": "view == flinkExplorer && viewItem == root-catalog",
+          "group": "inline"
         }
       ],
       "view/item/inline": [

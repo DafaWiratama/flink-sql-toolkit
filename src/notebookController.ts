@@ -80,7 +80,7 @@ export class FlinkNotebookController implements vscode.Disposable {
         try {
             const client = this.getClient();
             // Use this controller's session handle directly
-            const sessionHandle = this.session.handle;
+            let sessionHandle = this.session.handle;
 
             const sql = cell.document.getText();
 
@@ -101,7 +101,23 @@ export class FlinkNotebookController implements vscode.Disposable {
 
             for (const statement of statements) {
                 try {
-                    const { statementHandle } = await client.executeStatement(sessionHandle, statement);
+                    let statementHandle: string;
+                    try {
+                        const result = await client.executeStatement(sessionHandle, statement);
+                        statementHandle = result.statementHandle;
+                    } catch (e: any) {
+                        // Check for session invalid error
+                        if (e.message && (e.message.includes('Session') && e.message.includes('does not exist'))) {
+                            Logger.info('[Notebook] Session invalid during execution. Attempting auto-recovery...');
+                            sessionHandle = await this.sessionManager.validateOrRecoverSession(sessionHandle);
+                            // Retry execution with new handle
+                            const result = await client.executeStatement(sessionHandle, statement);
+                            statementHandle = result.statementHandle;
+                            Logger.info(`[Notebook] Recovered to new session: ${sessionHandle}`);
+                        } else {
+                            throw e;
+                        }
+                    }
 
                     // Wait for results to be ready (poll for NOT_READY -> PAYLOAD/EOS)
                     let resultData = await client.fetchResults(sessionHandle, statementHandle, 0);

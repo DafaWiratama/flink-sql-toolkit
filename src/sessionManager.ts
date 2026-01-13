@@ -253,4 +253,37 @@ export class SessionManager implements vscode.Disposable {
         this._saveSessions();
         this._onDidChangeSessions.fire();
     }
+
+    async validateOrRecoverSession(handle: string): Promise<string> {
+        const client = this.getClientForSession(handle);
+        if (!client) {
+            // Cannot validate without client, but maybe session info exists
+            const session = this.getSession(handle);
+            if (session) {
+                // Remove invalid session
+                this._removeSession(handle);
+                // Attempt recovery if we have connectionId
+                Logger.info(`[SessionManager] Session ${handle} client missing. Auto-recovering...`);
+                return await this.createSession('default', session.connectionId);
+            }
+            // No session info? Return empty or throw
+            throw new Error('Session connection no longer exists.');
+        }
+
+        const isValid = await client.checkSession(handle);
+        if (!isValid) {
+            Logger.info(`[SessionManager] Session ${handle} is invalid. Auto-recovering...`);
+
+            // Get connection info before removing
+            const session = this.getSession(handle);
+            const connectionId = session?.connectionId;
+
+            this._removeSession(handle);
+
+            // Auto-create 'default' session on the same connection
+            return await this.createSession('default', connectionId);
+        }
+
+        return handle;
+    }
 }

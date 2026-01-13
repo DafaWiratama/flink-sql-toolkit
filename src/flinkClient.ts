@@ -408,6 +408,61 @@ export class FlinkGatewayClient {
     }
 
     /**
+     * Lists all objects (tables and views) with their kind for a specific database.
+     * Switches to the catalog/database context first, then runs SHOW TABLES and SHOW VIEWS.
+     */
+    async listTablesWithKindInDatabase(sessionHandle: string, catalog: string, database: string): Promise<{ name: string, kind: string }[]> {
+        let tables: string[] = [];
+        let views: string[] = [];
+
+        try {
+            // Switch to the target catalog and database
+            await this.executeMetadataSql(sessionHandle, `USE CATALOG \`${catalog}\``);
+            await this.executeMetadataSql(sessionHandle, `USE \`${database}\``);
+
+            // Now fetch tables and views from current context
+            try {
+                const tableRows = await this.executeMetadataSql(sessionHandle, 'SHOW TABLES');
+                tables = tableRows.map(r => this.getValue(r, 0));
+                Logger.info(`[FlinkClient] Found ${tables.length} items from SHOW TABLES in ${catalog}.${database}`);
+            } catch (e) {
+                Logger.warn(`[FlinkClient] SHOW TABLES in ${catalog}.${database} failed:`, e);
+            }
+
+            try {
+                const viewRows = await this.executeMetadataSql(sessionHandle, 'SHOW VIEWS');
+                views = viewRows.map(r => this.getValue(r, 0));
+                Logger.info(`[FlinkClient] Found ${views.length} views from SHOW VIEWS in ${catalog}.${database}`);
+            } catch (e) {
+                Logger.warn(`[FlinkClient] SHOW VIEWS in ${catalog}.${database} failed:`, e);
+            }
+        } catch (e) {
+            Logger.warn(`[FlinkClient] Failed to switch to ${catalog}.${database}:`, e);
+            return [];
+        }
+
+        // Create a set of view names for filtering (case-insensitive)
+        const viewSet = new Set(views.map(v => v.toLowerCase()));
+
+        const result: { name: string, kind: string }[] = [];
+
+        // Tables = items from SHOW TABLES that are NOT in SHOW VIEWS
+        for (const t of tables) {
+            if (!viewSet.has(t.toLowerCase())) {
+                result.push({ name: t, kind: 'TABLE' });
+            }
+        }
+
+        // Views = items from SHOW VIEWS
+        for (const v of views) {
+            result.push({ name: v, kind: 'VIEW' });
+        }
+
+        Logger.info(`[FlinkClient] Result: ${result.filter(r => r.kind === 'TABLE').length} tables, ${result.filter(r => r.kind === 'VIEW').length} views`);
+        return result;
+    }
+
+    /**
      * Lists tables from the current session context.
      */
     async listTables(sessionHandle: string): Promise<string[]> {

@@ -193,6 +193,18 @@ export function activate(context: vscode.ExtensionContext) {
 		objectDetailsProvider.update(catalog, database, object, type);
 	});
 
+	const useDatabaseCommand = vscode.commands.registerCommand('flinkExplorer.useDatabase', (item: any) => {
+		catalogProvider.selectDatabase(item);
+	});
+
+	const refreshDatabaseCommand = vscode.commands.registerCommand('flinkExplorer.refreshDatabase', (item: any) => {
+		catalogProvider.refreshDatabase(item);
+	});
+
+	const refreshCatalogCommand = vscode.commands.registerCommand('flinkExplorer.refreshCatalog', (item: any) => {
+		catalogProvider.refreshCatalog(item);
+	});
+
 	// Register cancel command
 	const cancelJobCommand = vscode.commands.registerCommand('flinkJobs.cancel', (item: any) => {
 		runningJobsProvider.cancelJob(item);
@@ -284,6 +296,9 @@ export function activate(context: vscode.ExtensionContext) {
 		refreshExplorerCommand,
 		selectDatabaseCommand,
 		selectCatalogCommand,
+		useDatabaseCommand,
+		refreshDatabaseCommand,
+		refreshCatalogCommand,
 		configureCommand,
 		createSessionCommand,
 		selectSessionCommand,
